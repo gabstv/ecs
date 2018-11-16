@@ -11,7 +11,7 @@ import (
 type ValidateComponentData func(data interface{}) bool
 
 // ComponentDestructor is an optional destructor function that a component might have.
-type ComponentDestructor func(entity Entity, data interface{})
+type ComponentDestructor func(w *World, entity Entity, data interface{})
 
 // Component is a container of raw data.
 type Component struct {

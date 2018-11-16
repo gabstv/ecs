@@ -168,7 +168,7 @@ func (w *World) RemoveComponentFromEntity(entity Entity, component *Component) e
 	component.lock.Unlock()
 	// call destructor if exists
 	if destructor != nil {
-		destructor(entity, ldata)
+		destructor(w, entity, ldata)
 	}
 
 	return nil
