@@ -30,6 +30,17 @@ func (c *Component) String() string {
 	return fmt.Sprintf("[Component %q]", c.name)
 }
 
+// Validate if data belongs to the component.
+func (c *Component) Validate(data interface{}) bool {
+	c.lock.RLock()
+	defer c.lock.Unlock()
+	if c.validatedata == nil {
+		fmt.Printf("component %v called Validate but the validate func is nil\n", c.String())
+		return false
+	}
+	return c.validatedata(data)
+}
+
 // NewComponentInput is the input args of the World.NewComponent function.
 type NewComponentInput struct {
 	// Name of the component. Used for debugging purposes.
