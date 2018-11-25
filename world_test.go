@@ -276,3 +276,16 @@ func TestRun(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestDict(t *testing.T) {
+	w := NewWorld()
+	a := w.Get("a")
+	if a != nil {
+		t.Fail()
+	}
+	w.Set("a", int64(19))
+	a64 := w.Get("a").(int64)
+	if a64 != 19 {
+		t.Fail()
+	}
+}

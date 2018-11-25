@@ -18,6 +18,7 @@ type World struct {
 	components    map[flag]*Component
 	systems       []*System
 	views         []*View
+	globals       *dict
 }
 
 // NewWorld creates a world and initializes the internal storage (necessary).
@@ -27,6 +28,7 @@ func NewWorld() *World {
 	w.components = make(map[flag]*Component)
 	w.views = make([]*View, 0)
 	w.systems = make([]*System, 0)
+	w.globals = newdict()
 	return w
 }
 
@@ -245,4 +247,14 @@ func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
 		system.runfn(delta, v)
 	}
 	return time.Now().Sub(t0)
+}
+
+// Get a global variable
+func (w *World) Get(key string) interface{} {
+	return w.globals.Get(key)
+}
+
+// Set a global variable
+func (w *World) Set(key string, val interface{}) {
+	w.globals.Set(key, val)
 }
