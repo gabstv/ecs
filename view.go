@@ -59,6 +59,13 @@ func (v *View) Matches() []QueryMatch {
 	return v.matches
 }
 
+// World return the world the view belongs to.
+func (v *View) World() *World {
+	v.lock.RLock()
+	defer v.lock.RUnlock()
+	return v.world
+}
+
 func (v *View) upsert(entity Entity) {
 	// world is already read locked!
 	v.lock.Lock()
