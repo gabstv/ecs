@@ -10,7 +10,7 @@ import (
 // dt (delta time): the time taken between the last World.Run
 //
 // view: the combination of entity + component(s) data
-type SystemExec func(dt float64, view *View)
+type SystemExec func(dt float64, view *View, s *System)
 
 // System is the brain of an ECS.
 // The system performs global actions on every Entity that possesses
@@ -22,6 +22,7 @@ type System struct {
 	runfn    SystemExec
 	tags     map[string]bool
 	taglock  sync.RWMutex
+	dict     *dict
 }
 
 type sortedSystems []*System
@@ -48,6 +49,7 @@ func (w *World) NewSystem(priority int, fn SystemExec, comps ...*Component) *Sys
 		priority: priority,
 		runfn:    fn,
 		tags:     make(map[string]bool),
+		dict:     newdict(),
 	}
 	sys.view = w.NewView(comps...)
 	w.lock.Lock()
@@ -81,4 +83,14 @@ func (sys *System) ContainsTag(tag string) bool {
 	sys.taglock.RLock()
 	defer sys.taglock.RUnlock()
 	return sys.tags[tag]
+}
+
+// Get a variable from the system dictionary
+func (sys *System) Get(key string) interface{} {
+	return sys.dict.Get(key)
+}
+
+// Set a variable to the system dictionary
+func (sys *System) Set(key string, val interface{}) {
+	sys.dict.Set(key, val)
 }

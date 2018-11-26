@@ -212,7 +212,7 @@ func (w *World) Run(delta float64) (taken time.Duration) {
 	w.lock.RUnlock()
 	for _, system := range allsystems {
 		v := system.view
-		system.runfn(delta, v)
+		system.runfn(delta, v, system)
 	}
 	return time.Now().Sub(t0)
 }
@@ -228,7 +228,7 @@ func (w *World) RunWithTag(tag string, delta float64) (taken time.Duration) {
 			continue
 		}
 		v := system.view
-		system.runfn(delta, v)
+		system.runfn(delta, v, system)
 	}
 	return time.Now().Sub(t0)
 }
@@ -244,7 +244,7 @@ func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
 			continue
 		}
 		v := system.view
-		system.runfn(delta, v)
+		system.runfn(delta, v, system)
 	}
 	return time.Now().Sub(t0)
 }

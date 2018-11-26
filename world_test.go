@@ -69,14 +69,14 @@ func BenchmarkRun10000PositionX2(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(0, func(dt float64, view *View) {
+	w.NewSystem(0, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View) {
+	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -100,7 +100,7 @@ func BenchmarkRun10000PositionX2Tagged(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	upd := w.NewSystem(0, func(dt float64, view *View) {
+	upd := w.NewSystem(0, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -108,7 +108,7 @@ func BenchmarkRun10000PositionX2Tagged(b *testing.B) {
 		}
 	}, comp)
 	upd.AddTag("update")
-	drw := w.NewSystem(-1, func(dt float64, view *View) {
+	drw := w.NewSystem(-1, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -134,21 +134,21 @@ func BenchmarkRun10000PositionX3(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(0, func(dt float64, view *View) {
+	w.NewSystem(0, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View) {
+	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
 		}
 	}, comp)
-	w.NewSystem(-2, func(dt float64, view *View) {
+	w.NewSystem(-2, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -217,13 +217,13 @@ func TestSystemSort(t *testing.T) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(1, func(dt float64, view *View) {
+	w.NewSystem(1, func(dt float64, view *View, sys *System) {
 		fmt.Println("sys1", view.Matches())
 	}, comp)
-	w.NewSystem(100, func(dt float64, view *View) {
+	w.NewSystem(100, func(dt float64, view *View, sys *System) {
 		fmt.Println("sys100", view.Matches())
 	}, comp)
-	w.NewSystem(-1000, func(dt float64, view *View) {
+	w.NewSystem(-1000, func(dt float64, view *View, sys *System) {
 		fmt.Println("syslast", view.Matches())
 	}, comp)
 	if w.systems[0].priority != 100 {
@@ -240,11 +240,11 @@ func TestRun(t *testing.T) {
 		Name: "position",
 	})
 	var lastEntityPos *testPosition
-	w.NewSystem(-1000, func(dt float64, view *View) {
+	w.NewSystem(-1000, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		lastEntityPos = ls[9999].Components[comp].(*testPosition)
 	}, comp)
-	w.NewSystem(0, func(dt float64, view *View) {
+	w.NewSystem(0, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -252,7 +252,7 @@ func TestRun(t *testing.T) {
 			j.Y += 2
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View) {
+	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
 		ls := view.Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
@@ -286,6 +286,30 @@ func TestDict(t *testing.T) {
 	w.Set("a", int64(19))
 	a64 := w.Get("a").(int64)
 	if a64 != 19 {
+		t.Fail()
+	}
+}
+
+func TestSystemDict(t *testing.T) {
+	w := NewWorld()
+	comp, _ := w.NewComponent(NewComponentInput{
+		Name: "comp",
+	})
+	sys := w.NewSystem(0, func(dt float64, view *View, s *System) {
+		s.Set("marco", "polo")
+	}, comp)
+	entity0 := w.NewEntity()
+	w.AddComponentToEntity(entity0, comp, &testPosition{})
+	w.Run(1)
+	poloiface := sys.Get("marco")
+	if poloiface == nil {
+		t.FailNow()
+	}
+	if str, ok := poloiface.(string); ok {
+		if str != "polo" {
+			t.Fail()
+		}
+	} else {
 		t.Fail()
 	}
 }
