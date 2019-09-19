@@ -33,7 +33,7 @@ func (c *Component) String() string {
 // Validate if data belongs to the component.
 func (c *Component) Validate(data interface{}) bool {
 	c.lock.RLock()
-	defer c.lock.Unlock()
+	defer c.lock.RUnlock()
 	if c.validatedata == nil {
 		fmt.Printf("component %v called Validate but the validate func is nil\n", c.String())
 		return false
