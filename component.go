@@ -41,6 +41,13 @@ func (c *Component) Validate(data interface{}) bool {
 	return c.validatedata(data)
 }
 
+// Data returns the component data of an entity. Returns nil if the entity doesn't have this component.
+func (c *Component) Data(e Entity) interface{} {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.data[e]
+}
+
 // NewComponentInput is the input args of the World.NewComponent function.
 type NewComponentInput struct {
 	// Name of the component. Used for debugging purposes.
