@@ -23,6 +23,7 @@ type System struct {
 	tags     map[string]bool
 	taglock  sync.RWMutex
 	dict     *dict
+	world    *World
 }
 
 type sortedSystems []*System
@@ -50,6 +51,7 @@ func (w *World) NewSystem(priority int, fn SystemExec, comps ...*Component) *Sys
 		runfn:    fn,
 		tags:     make(map[string]bool),
 		dict:     newdict(),
+		world:    w,
 	}
 	sys.view = w.NewView(comps...)
 	w.lock.Lock()
@@ -93,4 +95,9 @@ func (sys *System) Get(key string) interface{} {
 // Set a variable to the system dictionary
 func (sys *System) Set(key string, val interface{}) {
 	sys.dict.Set(key, val)
+}
+
+// World returns the world the system belongs to.
+func (sys *System) World() *World {
+	return sys.world
 }
