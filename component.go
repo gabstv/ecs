@@ -80,6 +80,14 @@ func (w *World) NewComponent(input NewComponentInput) (*Component, error) {
 	}
 	w.lock.Lock()
 	w.components[comp.flag] = comp
+	w.componentNames[comp.name] = comp
 	w.lock.Unlock()
 	return comp, nil
+}
+
+// Component returns a registered component by name
+func (w *World) Component(name string) *Component {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+	return w.componentNames[name]
 }

@@ -10,15 +10,16 @@ import (
 // World is the "world" that entities, components and systems live and interact.
 type World struct {
 	// lock for nextEntity, entities, entityIndexMap
-	lock          sync.RWMutex
-	nextEntity    uint64
-	nextComponent uint64
-	nextView      uint64
-	entities      map[Entity]flag
-	components    map[flag]*Component
-	systems       []*System
-	views         []*View
-	globals       *dict
+	lock           sync.RWMutex
+	nextEntity     uint64
+	nextComponent  uint64
+	nextView       uint64
+	entities       map[Entity]flag
+	components     map[flag]*Component
+	componentNames map[string]*Component
+	systems        []*System
+	views          []*View
+	globals        *dict
 }
 
 // NewWorld creates a world and initializes the internal storage (necessary).
@@ -26,6 +27,7 @@ func NewWorld() *World {
 	w := &World{}
 	w.entities = make(map[Entity]flag)
 	w.components = make(map[flag]*Component)
+	w.componentNames = make(map[string]*Component)
 	w.views = make([]*View, 0)
 	w.systems = make([]*System, 0)
 	w.globals = newdict()
