@@ -69,15 +69,15 @@ func BenchmarkRun10000PositionX2(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(0, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(0, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(-1, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
@@ -100,16 +100,16 @@ func BenchmarkRun10000PositionX2Tagged(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	upd := w.NewSystem(0, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	upd := w.NewSystem(0, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
 	upd.AddTag("update")
-	drw := w.NewSystem(-1, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	drw := w.NewSystem(-1, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
@@ -134,22 +134,22 @@ func BenchmarkRun10000PositionX3(b *testing.B) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(0, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(0, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(-1, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
 		}
 	}, comp)
-	w.NewSystem(-2, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(-2, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += math.Sqrt(j.X + 1)
@@ -217,14 +217,14 @@ func TestSystemSort(t *testing.T) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "position",
 	})
-	w.NewSystem(1, func(dt float64, view *View, sys *System) {
-		fmt.Println("sys1", view.Matches())
+	w.NewSystem(1, func(ctx Context) {
+		fmt.Println("sys1", ctx.View().Matches())
 	}, comp)
-	w.NewSystem(100, func(dt float64, view *View, sys *System) {
-		fmt.Println("sys100", view.Matches())
+	w.NewSystem(100, func(ctx Context) {
+		fmt.Println("sys100", ctx.View().Matches())
 	}, comp)
-	w.NewSystem(-1000, func(dt float64, view *View, sys *System) {
-		fmt.Println("syslast", view.Matches())
+	w.NewSystem(-1000, func(ctx Context) {
+		fmt.Println("syslast", ctx.View().Matches())
 	}, comp)
 	if w.systems[0].priority != 100 {
 		t.Fail()
@@ -240,20 +240,20 @@ func TestRun(t *testing.T) {
 		Name: "position",
 	})
 	var lastEntityPos *testPosition
-	w.NewSystem(-1000, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(-1000, func(ctx Context) {
+		ls := ctx.View().Matches()
 		lastEntityPos = ls[9999].Components[comp].(*testPosition)
 	}, comp)
-	w.NewSystem(0, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(0, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X++
 			j.Y += 2
 		}
 	}, comp)
-	w.NewSystem(-1, func(dt float64, view *View, sys *System) {
-		ls := view.Matches()
+	w.NewSystem(-1, func(ctx Context) {
+		ls := ctx.View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X *= 4
@@ -295,8 +295,8 @@ func TestSystemDict(t *testing.T) {
 	comp, _ := w.NewComponent(NewComponentInput{
 		Name: "comp",
 	})
-	sys := w.NewSystem(0, func(dt float64, view *View, s *System) {
-		s.Set("marco", "polo")
+	sys := w.NewSystem(0, func(ctx Context) {
+		ctx.System().Set("marco", "polo")
 	}, comp)
 	entity0 := w.NewEntity()
 	w.AddComponentToEntity(entity0, comp, &testPosition{})

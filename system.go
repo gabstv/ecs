@@ -10,7 +10,7 @@ import (
 // dt (delta time): the time taken between the last World.Run
 //
 // view: the combination of entity + component(s) data
-type SystemExec func(dt float64, view *View, s *System)
+type SystemExec func(ctx Context)
 
 // System is the brain of an ECS.
 // The system performs global actions on every Entity that possesses

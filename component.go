@@ -13,6 +13,9 @@ type ValidateComponentData func(data interface{}) bool
 // ComponentDestructor is an optional destructor function that a component might have.
 type ComponentDestructor func(w *World, entity Entity, data interface{})
 
+var VoidDestructor = func(w *World, entity Entity, data interface{}) {}
+var NoValidate = func(data interface{}) bool { return true }
+
 // Component is a container of raw data.
 type Component struct {
 	lock         sync.RWMutex
@@ -32,11 +35,8 @@ func (c *Component) String() string {
 
 // Validate if data belongs to the component.
 func (c *Component) Validate(data interface{}) bool {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
 	if c.validatedata == nil {
-		fmt.Printf("component %v called Validate but the validate func is nil\n", c.String())
-		return false
+		panic(fmt.Sprintf("component %v called Validate but the validate func is nil\n", c.String()))
 	}
 	return c.validatedata(data)
 }
@@ -77,6 +77,12 @@ func (w *World) NewComponent(input NewComponentInput) (*Component, error) {
 		name:         input.Name,
 		flag:         newflagbit(uint8(nextid - 1)), // index starts at 0
 		validatedata: input.ValidateDataFn,
+	}
+	if comp.destructor == nil {
+		comp.destructor = VoidDestructor
+	}
+	if comp.validatedata == nil {
+		comp.validatedata = NoValidate
 	}
 	w.lock.Lock()
 	w.components[comp.flag] = comp

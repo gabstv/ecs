@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -212,9 +213,13 @@ func (w *World) Run(delta float64) (taken time.Duration) {
 	w.lock.RLock()
 	allsystems := w.systems
 	w.lock.RUnlock()
+	ctx := &ctxt{
+		c:  context.Background(),
+		dt: delta,
+	}
 	for _, system := range allsystems {
 		v := system.view
-		system.runfn(delta, v, system)
+		system.runfn(ctx.WithViewSystem(v, system))
 	}
 	return time.Now().Sub(t0)
 }
@@ -225,12 +230,16 @@ func (w *World) RunWithTag(tag string, delta float64) (taken time.Duration) {
 	w.lock.RLock()
 	allsystems := w.systems
 	w.lock.RUnlock()
+	ctx := &ctxt{
+		c:  context.Background(),
+		dt: delta,
+	}
 	for _, system := range allsystems {
 		if !system.ContainsTag(tag) {
 			continue
 		}
 		v := system.view
-		system.runfn(delta, v, system)
+		system.runfn(ctx.WithViewSystem(v, system))
 	}
 	return time.Now().Sub(t0)
 }
@@ -241,12 +250,16 @@ func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
 	w.lock.RLock()
 	allsystems := w.systems
 	w.lock.RUnlock()
+	ctx := &ctxt{
+		c:  context.Background(),
+		dt: delta,
+	}
 	for _, system := range allsystems {
 		if system.ContainsTag(tag) {
 			continue
 		}
 		v := system.view
-		system.runfn(delta, v, system)
+		system.runfn(ctx.WithViewSystem(v, system))
 	}
 	return time.Now().Sub(t0)
 }
