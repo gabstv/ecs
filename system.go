@@ -101,3 +101,8 @@ func (sys *System) Set(key string, val interface{}) {
 func (sys *System) World() *World {
 	return sys.world
 }
+
+// View returns the current view of the system
+func (sys *System) View() *View {
+	return sys.view
+}

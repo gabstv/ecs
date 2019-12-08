@@ -70,14 +70,14 @@ func BenchmarkRun10000PositionX2(b *testing.B) {
 		Name: "position",
 	})
 	w.NewSystem(0, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
 	w.NewSystem(-1, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
@@ -101,7 +101,7 @@ func BenchmarkRun10000PositionX2Tagged(b *testing.B) {
 		Name: "position",
 	})
 	upd := w.NewSystem(0, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
@@ -109,7 +109,7 @@ func BenchmarkRun10000PositionX2Tagged(b *testing.B) {
 	}, comp)
 	upd.AddTag("update")
 	drw := w.NewSystem(-1, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
@@ -135,21 +135,21 @@ func BenchmarkRun10000PositionX3(b *testing.B) {
 		Name: "position",
 	})
 	w.NewSystem(0, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X += 0.05
 		}
 	}, comp)
 	w.NewSystem(-1, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += 0.03
 		}
 	}, comp)
 	w.NewSystem(-2, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.Y += math.Sqrt(j.X + 1)
@@ -218,13 +218,13 @@ func TestSystemSort(t *testing.T) {
 		Name: "position",
 	})
 	w.NewSystem(1, func(ctx Context) {
-		fmt.Println("sys1", ctx.View().Matches())
+		fmt.Println("sys1", ctx.System().View().Matches())
 	}, comp)
 	w.NewSystem(100, func(ctx Context) {
-		fmt.Println("sys100", ctx.View().Matches())
+		fmt.Println("sys100", ctx.System().View().Matches())
 	}, comp)
 	w.NewSystem(-1000, func(ctx Context) {
-		fmt.Println("syslast", ctx.View().Matches())
+		fmt.Println("syslast", ctx.System().View().Matches())
 	}, comp)
 	if w.systems[0].priority != 100 {
 		t.Fail()
@@ -241,11 +241,11 @@ func TestRun(t *testing.T) {
 	})
 	var lastEntityPos *testPosition
 	w.NewSystem(-1000, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		lastEntityPos = ls[9999].Components[comp].(*testPosition)
 	}, comp)
 	w.NewSystem(0, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X++
@@ -253,7 +253,7 @@ func TestRun(t *testing.T) {
 		}
 	}, comp)
 	w.NewSystem(-1, func(ctx Context) {
-		ls := ctx.View().Matches()
+		ls := ctx.System().View().Matches()
 		for _, v := range ls {
 			j := v.Components[comp].(*testPosition)
 			j.X *= 4
