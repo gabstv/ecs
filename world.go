@@ -21,6 +21,7 @@ type World struct {
 	systems        []*System
 	views          []*View
 	globals        *dict
+	ctxbuilder     ContextBuilderFn
 }
 
 // NewWorld creates a world and initializes the internal storage (necessary).
@@ -32,6 +33,14 @@ func NewWorld() *World {
 	w.views = make([]*View, 0)
 	w.systems = make([]*System, 0)
 	w.globals = newdict()
+	w.ctxbuilder = DefaultContextBuilder
+	return w
+}
+
+// NewWorldWithCtx creates a world and sets the context buolder
+func NewWorldWithCtx(b ContextBuilderFn) *World {
+	w := NewWorld()
+	w.ctxbuilder = b
 	return w
 }
 
@@ -215,12 +224,7 @@ func (w *World) Run(delta float64) (taken time.Duration) {
 	w.lock.RUnlock()
 	rctx := context.Background()
 	for _, system := range allsystems {
-		system.runfn(ctxt{
-			c:      rctx,
-			dt:     delta,
-			system: system,
-			world:  w,
-		})
+		system.runfn(w.ctxbuilder(rctx, delta, system, w))
 	}
 	return time.Now().Sub(t0)
 }
@@ -236,12 +240,7 @@ func (w *World) RunWithTag(tag string, delta float64) (taken time.Duration) {
 		if !system.ContainsTag(tag) {
 			continue
 		}
-		system.runfn(ctxt{
-			c:      rctx,
-			dt:     delta,
-			system: system,
-			world:  w,
-		})
+		system.runfn(w.ctxbuilder(rctx, delta, system, w))
 	}
 	return time.Now().Sub(t0)
 }
@@ -257,12 +256,7 @@ func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
 		if system.ContainsTag(tag) {
 			continue
 		}
-		system.runfn(ctxt{
-			c:      rctx,
-			dt:     delta,
-			system: system,
-			world:  w,
-		})
+		system.runfn(w.ctxbuilder(rctx, delta, system, w))
 	}
 	return time.Now().Sub(t0)
 }
