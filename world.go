@@ -284,4 +284,6 @@ type Worlder interface {
 	AddComponentToEntity(entity Entity, component *Component, data interface{}) error
 	RemoveComponentFromEntity(entity Entity, component *Component) error
 	Query(components ...*Component) []QueryMatch
+	NewComponent(input NewComponentInput) (*Component, error)
+	Component(name string) *Component
 }
