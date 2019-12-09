@@ -219,6 +219,7 @@ func (w *World) Run(delta float64) (taken time.Duration) {
 			c:      rctx,
 			dt:     delta,
 			system: system,
+			world:  w,
 		})
 	}
 	return time.Now().Sub(t0)
@@ -239,6 +240,7 @@ func (w *World) RunWithTag(tag string, delta float64) (taken time.Duration) {
 			c:      rctx,
 			dt:     delta,
 			system: system,
+			world:  w,
 		})
 	}
 	return time.Now().Sub(t0)
@@ -259,6 +261,7 @@ func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
 			c:      rctx,
 			dt:     delta,
 			system: system,
+			world:  w,
 		})
 	}
 	return time.Now().Sub(t0)
@@ -272,4 +275,13 @@ func (w *World) Get(key string) interface{} {
 // Set a global variable
 func (w *World) Set(key string, val interface{}) {
 	w.globals.Set(key, val)
+}
+
+type Worlder interface {
+	NewEntity() Entity
+	NewEntities(n int) []Entity
+	ContainsEntity(entity Entity) bool
+	AddComponentToEntity(entity Entity, component *Component, data interface{}) error
+	RemoveComponentFromEntity(entity Entity, component *Component) error
+	Query(components ...*Component) []QueryMatch
 }

@@ -9,12 +9,14 @@ type Context interface {
 	context.Context
 	DT() float64
 	System() *System
+	World() Worlder
 }
 
 type ctxt struct {
 	c      context.Context
 	dt     float64
 	system *System
+	world  Worlder
 }
 
 func (c ctxt) Deadline() (deadline time.Time, ok bool) {
@@ -39,6 +41,10 @@ func (c ctxt) DT() float64 {
 
 func (c ctxt) System() *System {
 	return c.system
+}
+
+func (c ctxt) World() Worlder {
+	return c.world
 }
 
 func (c ctxt) WithSystem(s *System) Context {
