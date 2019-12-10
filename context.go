@@ -12,9 +12,9 @@ type Context interface {
 	World() Worlder
 }
 
-type ContextBuilderFn func(c0 context.Context, dt float64, sys *System, w Worlder) Context
+type ContextBuilderFn func(c0 context.Context, dt float64, sys *System, w WorldDicter) Context
 
-var DefaultContextBuilder = func(c0 context.Context, dt float64, sys *System, w Worlder) Context {
+var DefaultContextBuilder = func(c0 context.Context, dt float64, sys *System, w WorldDicter) Context {
 	return ctxt{
 		c:      c0,
 		dt:     dt,
