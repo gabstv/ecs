@@ -281,3 +281,8 @@ type Worlder interface {
 	NewComponent(input NewComponentInput) (*Component, error)
 	Component(name string) *Component
 }
+
+type Dicter interface {
+	Get(key string) interface{}
+	Set(key string, val interface{})
+}
