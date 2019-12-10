@@ -286,3 +286,8 @@ type Dicter interface {
 	Get(key string) interface{}
 	Set(key string, val interface{})
 }
+
+type WorldDicter interface {
+	Worlder
+	Dicter
+}
