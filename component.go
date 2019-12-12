@@ -11,9 +11,9 @@ import (
 type ValidateComponentData func(data interface{}) bool
 
 // ComponentDestructor is an optional destructor function that a component might have.
-type ComponentDestructor func(w Worlder, entity Entity, data interface{})
+type ComponentDestructor func(w WorldDicter, entity Entity, data interface{})
 
-var VoidDestructor = func(w Worlder, entity Entity, data interface{}) {}
+var VoidDestructor = func(w WorldDicter, entity Entity, data interface{}) {}
 var NoValidate = func(data interface{}) bool { return true }
 
 // Component is a container of raw data.
