@@ -9,7 +9,7 @@ type Context interface {
 	context.Context
 	DT() float64
 	System() *System
-	World() Worlder
+	World() WorldDicter
 }
 
 type ContextBuilderFn func(c0 context.Context, dt float64, sys *System, w WorldDicter) Context
@@ -27,7 +27,7 @@ type ctxt struct {
 	c      context.Context
 	dt     float64
 	system *System
-	world  Worlder
+	world  WorldDicter
 	m      map[string]interface{}
 }
 
@@ -55,7 +55,7 @@ func (c ctxt) System() *System {
 	return c.system
 }
 
-func (c ctxt) World() Worlder {
+func (c ctxt) World() WorldDicter {
 	return c.world
 }
 
