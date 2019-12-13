@@ -28,6 +28,7 @@ type ctxt struct {
 	dt     float64
 	system *System
 	world  Worlder
+	m      map[string]interface{}
 }
 
 func (c ctxt) Deadline() (deadline time.Time, ok bool) {

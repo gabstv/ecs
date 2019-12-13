@@ -12,6 +12,9 @@ import (
 // view: the combination of entity + component(s) data
 type SystemExec func(ctx Context)
 
+// SystemMiddleware // TODO: godoc
+type SystemMiddleware func(next SystemExec) SystemExec
+
 // System is the brain of an ECS.
 // The system performs global actions on every Entity that possesses
 // a Component (or a combination of components) of the same aspect as
@@ -105,4 +108,21 @@ func (sys *System) World() *World {
 // View returns the current view of the system
 func (sys *System) View() *View {
 	return sys.view
+}
+
+func SysWrapFn(fn SystemExec, mid ...SystemMiddleware) SystemExec {
+	return func(ctx Context) {
+		for _, m := range mid {
+			lfn := fn
+			fn = m(fn)
+			if fn == nil {
+				lfn(ctx)
+				return
+			}
+		}
+		if fn == nil {
+			return
+		}
+		fn(ctx)
+	}
 }
