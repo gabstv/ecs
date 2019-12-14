@@ -119,20 +119,10 @@ func (sys *System) View() *View {
 }
 
 func SysWrapFn(fn SystemExec, mid ...SystemMiddleware) SystemExec {
-	return func(ctx Context) {
-		for _, m := range mid {
-			lfn := fn
-			fn = m(fn)
-			if fn == nil {
-				lfn(ctx)
-				return
-			}
-		}
-		if fn == nil {
-			return
-		}
-		fn(ctx)
+	for _, m := range mid {
+		fn = m(fn)
 	}
+	return fn
 }
 
 // System returns a registered system by name
