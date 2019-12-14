@@ -19,6 +19,7 @@ type World struct {
 	components     map[flag]*Component
 	componentNames map[string]*Component
 	systems        []*System
+	systemNames    map[string]*System
 	views          []*View
 	globals        *dict
 	ctxbuilder     ContextBuilderFn
@@ -32,6 +33,7 @@ func NewWorld() *World {
 	w.componentNames = make(map[string]*Component)
 	w.views = make([]*View, 0)
 	w.systems = make([]*System, 0)
+	w.systemNames = make(map[string]*System)
 	w.globals = newdict()
 	w.ctxbuilder = DefaultContextBuilder
 	return w

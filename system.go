@@ -20,6 +20,7 @@ type SystemMiddleware func(next SystemExec) SystemExec
 // a Component (or a combination of components) of the same aspect as
 // that System.
 type System struct {
+	name     string
 	priority int
 	view     *View
 	runfn    SystemExec
@@ -48,8 +49,9 @@ func (a sortedSystems) Less(i, j int) bool {
 // fn is the loop function of a system.
 //
 // comps is the combination of components that a system will iterate on.
-func (w *World) NewSystem(priority int, fn SystemExec, comps ...*Component) *System {
+func (w *World) NewSystem(name string, priority int, fn SystemExec, comps ...*Component) *System {
 	sys := &System{
+		name:     name,
 		priority: priority,
 		runfn:    fn,
 		tags:     make(map[string]bool),
@@ -59,6 +61,12 @@ func (w *World) NewSystem(priority int, fn SystemExec, comps ...*Component) *Sys
 	sys.view = w.NewView(comps...)
 	w.lock.Lock()
 	w.systems = append(w.systems, sys)
+	if name != "" {
+		if _, ok := w.systemNames[name]; ok {
+			panic("system " + name + " already exists on world")
+		}
+		w.systemNames[name] = sys
+	}
 	sort.Sort(sortedSystems(w.systems))
 	w.lock.Unlock()
 	return sys
@@ -125,4 +133,11 @@ func SysWrapFn(fn SystemExec, mid ...SystemMiddleware) SystemExec {
 		}
 		fn(ctx)
 	}
+}
+
+// System returns a registered system by name
+func (w *World) System(name string) *System {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+	return w.systemNames[name]
 }
