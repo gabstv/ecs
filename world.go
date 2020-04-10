@@ -10,11 +10,11 @@ import (
 
 // SystemExecWrapper is used to alter every system exec
 // upon registering a system
-type SystemExecWrapper func(SystemExec) SystemExec
+type SystemExecWrapper func(*World, SystemExec) SystemExec
 
 // DefaultSystemExecWrapper is called when the system is added
 // to a world. It is used if the World's SystemExecWrapper is unset.
-var DefaultSystemExecWrapper SystemExecWrapper = func(x SystemExec) SystemExec {
+var DefaultSystemExecWrapper SystemExecWrapper = func(w *World, x SystemExec) SystemExec {
 	return x
 }
 

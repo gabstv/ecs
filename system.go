@@ -51,9 +51,9 @@ func (a sortedSystems) Less(i, j int) bool {
 // comps is the combination of components that a system will iterate on.
 func (w *World) NewSystem(name string, priority int, fn SystemExec, comps ...*Component) *System {
 	if w.SystemExecWrapper != nil {
-		fn = w.SystemExecWrapper(fn)
+		fn = w.SystemExecWrapper(w, fn)
 	} else if DefaultSystemExecWrapper != nil {
-		fn = DefaultSystemExecWrapper(fn)
+		fn = DefaultSystemExecWrapper(w, fn)
 	}
 	sys := &System{
 		name:     name,
