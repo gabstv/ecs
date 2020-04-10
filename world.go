@@ -8,8 +8,20 @@ import (
 	"time"
 )
 
+// SystemExecWrapper is used to alter every system exec
+// upon registering a system
+type SystemExecWrapper func(SystemExec) SystemExec
+
+// DefaultSystemExecWrapper is called when the system is added
+// to a world. It is used if the World's SystemExecWrapper is unset.
+var DefaultSystemExecWrapper SystemExecWrapper = func(x SystemExec) SystemExec {
+	return x
+}
+
 // World is the "world" that entities, components and systems live and interact.
 type World struct {
+	SystemExecWrapper SystemExecWrapper
+
 	// lock for nextEntity, entities, entityIndexMap
 	lock           sync.RWMutex
 	nextEntity     uint64
