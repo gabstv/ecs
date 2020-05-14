@@ -252,7 +252,7 @@ func (w *World) QueryMask(excludemask []*Component, includemask []*Component) []
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 	for entity, eflag := range w.entities {
-		if eflag.contains(flag0) && (!eflag.contains(negflag)) {
+		if eflag.contains(flag0) && eflag.and(negflag).iszero() {
 			mmap := make(map[*Component]interface{})
 			for _, comp := range includemask {
 				comp.lock.RLock()

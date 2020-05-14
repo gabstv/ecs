@@ -153,7 +153,7 @@ func (v *View) matchesEntitySignature(f flag) bool {
 	if !f.contains(v.includemask) {
 		return false
 	}
-	if f.contains(v.excludemask) && !v.excludemask.iszero() {
+	if !f.and(v.excludemask).iszero() {
 		return false
 	}
 	return true

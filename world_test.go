@@ -252,6 +252,76 @@ func TestQueryMask(t *testing.T) {
 	}
 }
 
+func TestMaskView(t *testing.T) {
+	w := NewWorld()
+	xentity := w.NewEntity()
+	xcomp, err := w.NewComponent(NewComponentInput{
+		Name: "position",
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(xentity, xcomp, &testPosition{X: 10, Y: 20}); err != nil {
+		t.Fatal(err.Error())
+	}
+	yentity := w.NewEntity()
+	ycomp, err := w.NewComponent(NewComponentInput{
+		Name: "examplemask",
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	zcomp, err := w.NewComponent(NewComponentInput{
+		Name: "examplemask2",
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(yentity, xcomp, &testPosition{X: 11, Y: 21}); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(yentity, ycomp, &testPosition{X: -1, Y: -1}); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(yentity, zcomp, &testPosition{X: -2, Y: -2}); err != nil {
+		t.Fatal(err.Error())
+	}
+	view := w.NewMaskView(Cs(ycomp, zcomp), Cs(xcomp))
+	{
+		m := view.Matches()
+		if len(m) != 1 {
+			t.Fatal("invalid length")
+		}
+		if m[0].Components[xcomp] == nil {
+			t.Fatal("invalid result")
+		}
+		if m[0].Components[xcomp].(*testPosition).X != 10 {
+			t.Fatal("invalid result (X)")
+		}
+		if m[0].Components[ycomp] != nil {
+			t.Fatal("invalid result (should be nil)")
+		}
+	}
+	if err := w.RemoveComponentFromEntity(yentity, ycomp); err != nil {
+		t.Fatal(err.Error())
+	}
+	{
+		m := view.Matches()
+		if len(m) != 1 {
+			t.Fatal("invalid length")
+		}
+	}
+	if err := w.RemoveComponentFromEntity(yentity, zcomp); err != nil {
+		t.Fatal(err.Error())
+	}
+	{
+		m := view.Matches()
+		if len(m) != 2 {
+			t.Fatal("invalid length")
+		}
+	}
+}
+
 func TestSystemSort(t *testing.T) {
 	w := NewWorld()
 	comp, _ := w.NewComponent(NewComponentInput{
