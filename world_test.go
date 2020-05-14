@@ -212,6 +212,46 @@ func TestComponent(t *testing.T) {
 	}
 }
 
+func TestQueryMask(t *testing.T) {
+	w := NewWorld()
+	xentity := w.NewEntity()
+	xcomp, err := w.NewComponent(NewComponentInput{
+		Name: "position",
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(xentity, xcomp, &testPosition{X: 10, Y: 20}); err != nil {
+		t.Fatal(err.Error())
+	}
+	yentity := w.NewEntity()
+	ycomp, err := w.NewComponent(NewComponentInput{
+		Name: "examplemask",
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(yentity, xcomp, &testPosition{X: 11, Y: 21}); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := w.AddComponentToEntity(yentity, ycomp, &testPosition{X: -1, Y: -1}); err != nil {
+		t.Fatal(err.Error())
+	}
+	res := w.QueryMask(Cs(ycomp), Cs(xcomp))
+	if len(res) != 1 {
+		t.Fatal("invalid length")
+	}
+	if res[0].Components[xcomp] == nil {
+		t.Fatal("invalid result")
+	}
+	if res[0].Components[xcomp].(*testPosition).X != 10 {
+		t.Fatal("invalid result (X)")
+	}
+	if res[0].Components[ycomp] != nil {
+		t.Fatal("invalid result (should be nil)")
+	}
+}
+
 func TestSystemSort(t *testing.T) {
 	w := NewWorld()
 	comp, _ := w.NewComponent(NewComponentInput{

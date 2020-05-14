@@ -27,6 +27,10 @@ func (f flag) contains(g flag) bool {
 	return f.and(g).equals(g)
 }
 
+func (f flag) iszero() bool {
+	return f[0] == 0 && f[1] == 0 && f[2] == 0 && f[3] == 0
+}
+
 func newflag(a, b, c, d uint64) flag {
 	return flag{a, b, c, d}
 }

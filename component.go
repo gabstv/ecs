@@ -26,6 +26,11 @@ type Component struct {
 	validatedata ValidateComponentData
 }
 
+// Cs is a shorthand to create a component slice
+func Cs(comps ...*Component) []*Component {
+	return comps
+}
+
 // String returns the string representation of this component
 func (c *Component) String() string {
 	c.lock.RLock()

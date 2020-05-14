@@ -134,7 +134,7 @@ func (w *World) AddComponentToEntity(entity Entity, component *Component, data i
 	}
 	fingerprint := getfingerprint(clist...)
 	for _, view := range w.views {
-		if containsfingerprint(fingerprint, view.fingerprint) {
+		if view.matchesEntitySignature(fingerprint) {
 			view.upsert(entity)
 		} else {
 			index := -1
@@ -176,14 +176,21 @@ func (w *World) RemoveComponentFromEntity(entity Entity, component *Component) e
 	ldata := component.data[entity]
 	compflag := component.flag
 	component.lock.RUnlock()
-	// remove from views
+	// remove/add from/to views
 	w.lock.RLock()
 	for _, view := range w.views {
 		view.lock.RLock()
-		ookk := view.fingerprint.contains(compflag)
+		ookk := view.includemask.contains(compflag)
+		newsig := w.entities[entity].xor(compflag)
 		view.lock.RUnlock()
 		if ookk {
+			// by removing this component, the entity became ineligible for this view
 			view.remove(entity)
+		} else {
+			// by removing this component, the entity became eligible for this view
+			if view.matchesEntitySignature(newsig) {
+				view.upsert(entity)
+			}
 		}
 	}
 	// remove from data
@@ -203,7 +210,7 @@ func (w *World) RemoveComponentFromEntity(entity Entity, component *Component) e
 }
 
 // Query will return all entities (and components) that contain the
-// combination of entities.
+// combination of components.
 func (w *World) Query(components ...*Component) []QueryMatch {
 	flag0 := newflag(0, 0, 0, 0)
 	for _, comp := range components {
@@ -216,6 +223,38 @@ func (w *World) Query(components ...*Component) []QueryMatch {
 		if eflag.contains(flag0) {
 			mmap := make(map[*Component]interface{})
 			for _, comp := range components {
+				comp.lock.RLock()
+				mmap[comp] = comp.data[entity]
+				comp.lock.RUnlock()
+			}
+			match := QueryMatch{
+				Entity:     entity,
+				Components: mmap,
+			}
+			results = append(results, match)
+		}
+	}
+	return results
+}
+
+// QueryMask will return all entities (and components) that contain the
+// combination of components, excluding excludemask.
+func (w *World) QueryMask(excludemask []*Component, includemask []*Component) []QueryMatch {
+	flag0 := newflag(0, 0, 0, 0)
+	negflag := newflag(0, 0, 0, 0)
+	for _, comp := range includemask {
+		flag0 = flag0.or(comp.flag)
+	}
+	for _, comp := range excludemask {
+		negflag = negflag.or(comp.flag)
+	}
+	results := make([]QueryMatch, 0)
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+	for entity, eflag := range w.entities {
+		if eflag.contains(flag0) && (!eflag.contains(negflag)) {
+			mmap := make(map[*Component]interface{})
+			for _, comp := range includemask {
 				comp.lock.RLock()
 				mmap[comp] = comp.data[entity]
 				comp.lock.RUnlock()

@@ -19,7 +19,8 @@ type View struct {
 	world       *World
 	matches     []QueryMatch
 	matchmap    map[Entity]int
-	fingerprint flag
+	includemask flag
+	excludemask flag
 }
 
 func getfingerprint(components ...*Component) flag {
@@ -41,7 +42,33 @@ func (w *World) NewView(components ...*Component) *View {
 		world:       w,
 		matchmap:    make(map[Entity]int),
 		matches:     w.Query(components...),
-		fingerprint: getfingerprint(components...),
+		includemask: getfingerprint(components...),
+		excludemask: newflag(0, 0, 0, 0),
+	}
+	for k, v := range view.matches {
+		view.matchmap[v.Entity] = k
+	}
+	w.lock.Lock()
+	w.views = append(w.views, view)
+	w.lock.Unlock()
+	return view
+}
+
+// NewMaskView creates a view on the current world based on the combination of components.
+func (w *World) NewMaskView(excludemask []*Component, includemask []*Component) *View {
+	if excludemask == nil {
+		excludemask = make([]*Component, 0)
+	}
+	if includemask == nil {
+		includemask = make([]*Component, 0)
+	}
+	view := &View{
+		id:          atomic.AddUint64(&w.nextView, 1) - 1,
+		world:       w,
+		matchmap:    make(map[Entity]int),
+		matches:     w.QueryMask(excludemask, includemask),
+		includemask: getfingerprint(includemask...),
+		excludemask: getfingerprint(excludemask...),
 	}
 	for k, v := range view.matches {
 		view.matchmap[v.Entity] = k
@@ -118,4 +145,16 @@ func (v *View) remove(entity Entity) {
 	for i := kkey; i < len(v.matches); i++ {
 		v.matchmap[v.matches[i].Entity] = i
 	}
+}
+
+func (v *View) matchesEntitySignature(f flag) bool {
+	//v.lock.RLock()
+	//defer v.lock.RUnlock()
+	if !f.contains(v.includemask) {
+		return false
+	}
+	if f.contains(v.excludemask) && !v.excludemask.iszero() {
+		return false
+	}
+	return true
 }

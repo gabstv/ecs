@@ -44,7 +44,7 @@ func (a sortedSystems) Less(i, j int) bool {
 
 // NewSystem constructs a new system.
 //
-// The priority isused to sort the execution between systems.
+// The priority is used to sort the execution between systems.
 //
 // fn is the loop function of a system.
 //
@@ -64,6 +64,42 @@ func (w *World) NewSystem(name string, priority int, fn SystemExec, comps ...*Co
 		world:    w,
 	}
 	sys.view = w.NewView(comps...)
+	w.lock.Lock()
+	w.systems = append(w.systems, sys)
+	if name != "" {
+		if _, ok := w.systemNames[name]; ok {
+			panic("system " + name + " already exists on world")
+		}
+		w.systemNames[name] = sys
+	}
+	sort.Sort(sortedSystems(w.systems))
+	w.lock.Unlock()
+	return sys
+}
+
+// NewSystemX constructs a new system.
+//
+// The priority is used to sort the execution between systems.
+//
+// fn is the loop function of a system.
+//
+// includecomps is the combination of components that a system will iterate on.
+// excludecomps is a inverse mask of components that a system will use to exclude entities from the list.
+func (w *World) NewSystemX(name string, priority int, fn SystemExec, includecomps, excludecomps []*Component) *System {
+	if w.SystemExecWrapper != nil {
+		fn = w.SystemExecWrapper(w, fn)
+	} else if DefaultSystemExecWrapper != nil {
+		fn = DefaultSystemExecWrapper(w, fn)
+	}
+	sys := &System{
+		name:     name,
+		priority: priority,
+		runfn:    fn,
+		tags:     make(map[string]bool),
+		dict:     newdict(),
+		world:    w,
+	}
+	sys.view = w.NewMaskView(excludecomps, includecomps)
 	w.lock.Lock()
 	w.systems = append(w.systems, sys)
 	if name != "" {
