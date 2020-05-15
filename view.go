@@ -14,13 +14,15 @@ type QueryMatch struct {
 
 // View is the result set of a stored query on the data (entity + components).
 type View struct {
-	lock        sync.RWMutex
-	id          uint64
-	world       *World
-	matches     []QueryMatch
-	matchmap    map[Entity]int
-	includemask flag
-	excludemask flag
+	lock            sync.RWMutex
+	id              uint64
+	world           *World
+	matches         []QueryMatch
+	matchmap        map[Entity]int
+	includemask     flag
+	excludemask     flag
+	onEntityAdded   EntityEvent
+	onEntityRemoved EntityEvent
 }
 
 func getfingerprint(components ...*Component) flag {
@@ -93,6 +95,18 @@ func (v *View) World() *World {
 	return v.world
 }
 
+func (v *View) SetOnEntityAdded(fn EntityEvent) {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	v.onEntityAdded = fn
+}
+
+func (v *View) SetOnEntityRemoved(fn EntityEvent) {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	v.onEntityAdded = fn
+}
+
 func (v *View) upsert(entity Entity) {
 	// world is already read locked!
 	v.lock.Lock()
@@ -130,6 +144,12 @@ func (v *View) upsert(entity Entity) {
 	newmatch.Components = nmap
 	v.matches = append(v.matches, newmatch)
 	v.matchmap[entity] = nextindex
+	if v.onEntityAdded != nil {
+		w := v.world
+		v.lock.Unlock()
+		v.onEntityAdded(entity, w)
+		v.lock.Lock()
+	}
 }
 
 func (v *View) remove(entity Entity) {
@@ -144,6 +164,13 @@ func (v *View) remove(entity Entity) {
 	// reassign indexes
 	for i := kkey; i < len(v.matches); i++ {
 		v.matchmap[v.matches[i].Entity] = i
+	}
+	//
+	if v.onEntityRemoved != nil {
+		w := v.world
+		v.lock.Unlock()
+		v.onEntityRemoved(entity, w)
+		v.lock.Lock()
 	}
 }
 

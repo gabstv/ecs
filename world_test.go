@@ -287,6 +287,19 @@ func TestMaskView(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	view := w.NewMaskView(Cs(ycomp, zcomp), Cs(xcomp))
+	view.SetOnEntityAdded(func(e Entity, w *World) {
+		ydat := xcomp.Data(e)
+		if ydat == nil {
+			t.Fatal("ydat is nil (view event)")
+		}
+		ydat2, ok := ydat.(*testPosition)
+		if !ok {
+			t.Fatal("ydat is not *testPosition (view event)")
+		}
+		if ydat2.X != 11 {
+			t.Fatal("ydat is not correct (view event)")
+		}
+	})
 	{
 		m := view.Matches()
 		if len(m) != 1 {

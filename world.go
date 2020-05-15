@@ -323,24 +323,3 @@ func (w *World) Get(key string) interface{} {
 func (w *World) Set(key string, val interface{}) {
 	w.globals.Set(key, val)
 }
-
-type Worlder interface {
-	NewEntity() Entity
-	NewEntities(n int) []Entity
-	ContainsEntity(entity Entity) bool
-	AddComponentToEntity(entity Entity, component *Component, data interface{}) error
-	RemoveComponentFromEntity(entity Entity, component *Component) error
-	Query(components ...*Component) []QueryMatch
-	NewComponent(input NewComponentInput) (*Component, error)
-	Component(name string) *Component
-}
-
-type Dicter interface {
-	Get(key string) interface{}
-	Set(key string, val interface{})
-}
-
-type WorldDicter interface {
-	Worlder
-	Dicter
-}
