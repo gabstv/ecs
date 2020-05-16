@@ -146,8 +146,9 @@ func (v *View) upsert(entity Entity) {
 	v.matchmap[entity] = nextindex
 	if v.onEntityAdded != nil {
 		w := v.world
+		ff := v.onEntityAdded
 		v.lock.Unlock()
-		v.onEntityAdded(entity, w)
+		ff(entity, w)
 	} else {
 		v.lock.Unlock()
 	}
@@ -169,8 +170,9 @@ func (v *View) remove(entity Entity) {
 	//
 	if v.onEntityRemoved != nil {
 		w := v.world
+		ff := v.onEntityRemoved
 		v.lock.Unlock()
-		v.onEntityRemoved(entity, w)
+		ff(entity, w)
 	} else {
 		v.lock.Unlock()
 	}
