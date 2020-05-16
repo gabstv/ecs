@@ -104,7 +104,7 @@ func (v *View) SetOnEntityAdded(fn EntityEvent) {
 func (v *View) SetOnEntityRemoved(fn EntityEvent) {
 	v.lock.Lock()
 	defer v.lock.Unlock()
-	v.onEntityAdded = fn
+	v.onEntityRemoved = fn
 }
 
 func (v *View) upsert(entity Entity) {
