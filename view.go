@@ -110,7 +110,6 @@ func (v *View) SetOnEntityRemoved(fn EntityEvent) {
 func (v *View) upsert(entity Entity) {
 	// world is already read locked!
 	v.lock.Lock()
-	defer v.lock.Unlock()
 	if oldindex, ok := v.matchmap[entity]; ok {
 		item := v.matches[oldindex]
 		// reapply data?
@@ -124,6 +123,7 @@ func (v *View) upsert(entity Entity) {
 			}
 			comp.lock.RUnlock()
 		}
+		v.lock.Unlock()
 		return
 	}
 	// INSERT
@@ -148,15 +148,16 @@ func (v *View) upsert(entity Entity) {
 		w := v.world
 		v.lock.Unlock()
 		v.onEntityAdded(entity, w)
-		v.lock.Lock()
+	} else {
+		v.lock.Unlock()
 	}
 }
 
 func (v *View) remove(entity Entity) {
 	v.lock.Lock()
-	defer v.lock.Unlock()
 	kkey, exists := v.matchmap[entity]
 	if !exists {
+		v.lock.Unlock()
 		return
 	}
 	delete(v.matchmap, entity)
@@ -170,7 +171,8 @@ func (v *View) remove(entity Entity) {
 		w := v.world
 		v.lock.Unlock()
 		v.onEntityRemoved(entity, w)
-		v.lock.Lock()
+	} else {
+		v.lock.Unlock()
 	}
 }
 
