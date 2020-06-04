@@ -209,6 +209,30 @@ func (w *World) RemoveComponentFromEntity(entity Entity, component *Component) e
 	return nil
 }
 
+// RemoveEntity removes an entity from the world (and all components)
+func (w *World) RemoveEntity(entity Entity) bool {
+	w.lock.RLock()
+	eflag, ok := w.entities[entity]
+	if !ok {
+		w.lock.RUnlock()
+		return false
+	}
+	comps := make([]*Component, 0, len(w.components))
+	for cflag, c := range w.components {
+		if eflag.contains(cflag) {
+			comps = append(comps, c)
+		}
+	}
+	w.lock.RUnlock()
+	for _, comp := range comps {
+		_ = w.RemoveComponentFromEntity(entity, comp)
+	}
+	w.lock.Lock()
+	delete(w.entities, entity)
+	w.lock.Unlock()
+	return true
+}
+
 // Query will return all entities (and components) that contain the
 // combination of components.
 func (w *World) Query(components ...*Component) []QueryMatch {
