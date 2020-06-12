@@ -1,41 +1,52 @@
 package ecs
 
-type flag [4]uint64
+const MaxFlagCapacity = 256
 
-func (f flag) clone() flag {
-	return flag{f[0], f[1], f[2], f[3]}
+// Flag is a 256 bit binary flag
+type Flag [4]uint64
+
+// Clone returns a new flag with identical data
+func (f Flag) Clone() Flag {
+	return Flag{f[0], f[1], f[2], f[3]}
 }
 
-func (f flag) equals(g flag) bool {
+// Equals checs if g contains the same bits
+func (f Flag) Equals(g Flag) bool {
 	return f[0] == g[0] && f[1] == g[1] && f[2] == g[2] && f[3] == g[3]
 }
 
-func (f flag) xor(g flag) flag {
-	return flag{f[0] ^ g[0], f[1] ^ g[1], f[2] ^ g[2], f[3] ^ g[3]}
+// Xor bitwise (f ^ g)
+func (f Flag) Xor(g Flag) Flag {
+	return Flag{f[0] ^ g[0], f[1] ^ g[1], f[2] ^ g[2], f[3] ^ g[3]}
 }
 
-func (f flag) and(g flag) flag {
-	return flag{f[0] & g[0], f[1] & g[1], f[2] & g[2], f[3] & g[3]}
+// And bitwise (f & g)
+func (f Flag) And(g Flag) Flag {
+	return Flag{f[0] & g[0], f[1] & g[1], f[2] & g[2], f[3] & g[3]}
 }
 
-func (f flag) or(g flag) flag {
-	return flag{f[0] | g[0], f[1] | g[1], f[2] | g[2], f[3] | g[3]}
+// Or bitwise (f | g)
+func (f Flag) Or(g Flag) Flag {
+	return Flag{f[0] | g[0], f[1] | g[1], f[2] | g[2], f[3] | g[3]}
 }
 
-// contains: f & g == g
-func (f flag) contains(g flag) bool {
-	return f.and(g).equals(g)
+// Contains tests if (f & g == g)
+func (f Flag) Contains(g Flag) bool {
+	return f.And(g).Equals(g)
 }
 
-func (f flag) iszero() bool {
+// IsZero returns true if all bits are zero
+func (f Flag) IsZero() bool {
 	return f[0] == 0 && f[1] == 0 && f[2] == 0 && f[3] == 0
 }
 
-func newflag(a, b, c, d uint64) flag {
-	return flag{a, b, c, d}
+// NewFlagRaw creates a new flag
+func NewFlagRaw(a, b, c, d uint64) Flag {
+	return Flag{a, b, c, d}
 }
 
-func newflagbit(bit uint8) flag {
+// NewFlag creates a new flag
+func NewFlag(bit uint8) Flag {
 	var a, b, c, d uint64
 	if bit > 192 {
 		d = 1 << (bit - 192)
@@ -46,5 +57,5 @@ func newflagbit(bit uint8) flag {
 	} else {
 		a = 1 << bit
 	}
-	return flag{a, b, c, d}
+	return Flag{a, b, c, d}
 }

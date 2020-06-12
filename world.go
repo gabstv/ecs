@@ -1,349 +1,197 @@
 package ecs
 
 import (
-	"context"
-	"fmt"
+	"errors"
+	"sort"
 	"sync"
-	"sync/atomic"
-	"time"
 )
 
-// SystemExecWrapper is used to alter every system exec
-// upon registering a system
-type SystemExecWrapper func(*World, SystemExec) SystemExec
-
-// DefaultSystemExecWrapper is called when the system is added
-// to a world. It is used if the World's SystemExecWrapper is unset.
-var DefaultSystemExecWrapper SystemExecWrapper = func(w *World, x SystemExec) SystemExec {
-	return x
-}
-
-// World is the "world" that entities, components and systems live and interact.
 type World struct {
-	SystemExecWrapper SystemExecWrapper
+	l          sync.RWMutex
+	lentity    Entity
+	lflag      uint8
+	components map[string]BaseComponent
+	systems    []BaseSystem
+	syscache   map[string]BaseSystem
 
-	// lock for nextEntity, entities, entityIndexMap
-	lock           sync.RWMutex
-	nextEntity     uint64
-	nextComponent  uint64
-	nextView       uint64
-	entities       map[Entity]flag
-	components     map[flag]*Component
-	componentNames map[string]*Component
-	systems        []*System
-	systemNames    map[string]*System
-	views          []*View
-	globals        *dict
-	ctxbuilder     ContextBuilderFn
+	entities []EntityFlag
+	key      [4]byte
 }
 
-// NewWorld creates a world and initializes the internal storage (necessary).
-func NewWorld() *World {
-	w := &World{}
-	w.entities = make(map[Entity]flag)
-	w.components = make(map[flag]*Component)
-	w.componentNames = make(map[string]*Component)
-	w.views = make([]*View, 0)
-	w.systems = make([]*System, 0)
-	w.systemNames = make(map[string]*System)
-	w.globals = newdict()
-	w.ctxbuilder = DefaultContextBuilder
-	return w
-}
-
-// NewWorldWithCtx creates a world and sets the context buolder
-func NewWorldWithCtx(b ContextBuilderFn) *World {
-	w := NewWorld()
-	w.ctxbuilder = b
-	return w
-}
-
-// NewEntity creates and entity and adds it to the current world.
-func (w *World) NewEntity() Entity {
-	nextid := atomic.AddUint64(&w.nextEntity, 1)
-	entity := Entity(nextid - 1)
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	w.entities[entity] = newflag(0, 0, 0, 0)
-	return entity
-}
-
-// NewEntities creates a "n" amount of entities in the current world.
-func (w *World) NewEntities(n int) []Entity {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	nn := w.nextEntity
-	entities := make([]Entity, n)
-	for k := range entities {
-		nn++
-		e := Entity(nn)
-		w.entities[e] = newflag(0, 0, 0, 0)
-		entities[k] = e
+func (w *World) RegisterComponent(c BaseComponent) {
+	w.l.Lock()
+	defer w.l.Unlock()
+	if _, ok := w.components[c.UUID()]; ok {
+		panic("component " + c.Name() + " already registered (" + c.UUID() + ")")
 	}
-	w.nextEntity = nn
-	return entities
+	w.components[c.UUID()] = c
+	c.Setup(w, NewFlag(w.lflag), w.key)
+	w.lflag++
 }
 
-// ContainsEntity tests if an entity is present in the world.
-func (w *World) ContainsEntity(entity Entity) bool {
-	w.lock.RLock()
-	defer w.lock.RUnlock()
-	_, ok := w.entities[entity]
+func (w *World) IsRegistered(id string) bool {
+	w.l.RLock()
+	defer w.l.RUnlock()
+	_, ok := w.components[id]
 	return ok
 }
 
-// AddComponentToEntity adds a component to an entity.
-//
-// All the existing views are updated if the entity matches the requirements.
-func (w *World) AddComponentToEntity(entity Entity, component *Component, data interface{}) error {
-	w.lock.RLock()
-	if _, ok := w.entities[entity]; !ok {
-		w.lock.RUnlock()
-		return fmt.Errorf("world does not contain entity")
+func (w *World) entityindex(e Entity) int {
+	i := sort.Search(len(w.entities), func(i int) bool { return w.entities[i].Entity >= e })
+	if i < len(w.entities) && w.entities[i].Entity == e {
+		return i
 	}
-	if _, ok := w.components[component.flag]; !ok {
-		w.lock.RUnlock()
-		return fmt.Errorf("world does not contain component")
-	}
-	w.lock.RUnlock()
-	// entity and component are valid
-	component.lock.RLock()
-	if component.validatedata != nil {
-		if !component.validatedata(data) {
-			component.lock.RUnlock()
-			return fmt.Errorf("invalid component data [ValidateComponentData]")
-		}
-	}
-	component.lock.RUnlock()
-	component.lock.Lock()
-	component.data[entity] = data
-	w.lock.Lock()
-	w.entities[entity] = w.entities[entity].or(component.flag)
-	w.lock.Unlock()
-	component.lock.Unlock()
-	//
-	// get fingerprint of newly modified instance
-	clist := make([]*Component, 0)
-	w.lock.RLock()
-	for _, v := range w.components {
-		v.lock.RLock()
-		if _, ok := v.data[entity]; ok {
-			clist = append(clist, v)
-		}
-		v.lock.RUnlock()
-	}
-	fingerprint := getfingerprint(clist...)
-	for _, view := range w.views {
-		if view.matchesEntitySignature(fingerprint) {
-			view.upsert(entity)
-		} else {
-			index := -1
-			view.lock.RLock()
-			if i2, ok := view.matchmap[entity]; ok {
-				index = i2
-			}
-			view.lock.RUnlock()
-			if index != -1 {
-				view.remove(entity)
-			}
-		}
-	}
-	w.lock.RUnlock()
-	//
-	return nil
+	return -1
 }
 
-// RemoveComponentFromEntity removes a component from an entity.
-//
-// All the existing views are updated if the entity matches the requirements.
-func (w *World) RemoveComponentFromEntity(entity Entity, component *Component) error {
-	w.lock.RLock()
-	if _, ok := w.entities[entity]; !ok {
-		w.lock.RUnlock()
-		return fmt.Errorf("world does not contain entity")
+func (w *World) CFlag(e Entity) Flag {
+	w.l.RLock()
+	defer w.l.RUnlock()
+	i := w.entityindex(e)
+	if i == -1 {
+		return NewFlagRaw(0, 0, 0, 0)
 	}
-	if _, ok := w.components[component.flag]; !ok {
-		w.lock.RUnlock()
-		return fmt.Errorf("world does not contain component")
-	}
-	w.lock.RUnlock()
-	// entity and component are valid
-	var destructor ComponentDestructor
-	component.lock.RLock()
-	if component.destructor != nil {
-		destructor = component.destructor
-	}
-	ldata := component.data[entity]
-	compflag := component.flag
-	component.lock.RUnlock()
-	// remove/add from/to views
-	w.lock.RLock()
-	for _, view := range w.views {
-		view.lock.RLock()
-		ookk := view.includemask.contains(compflag)
-		newsig := w.entities[entity].xor(compflag)
-		view.lock.RUnlock()
-		if ookk {
-			// by removing this component, the entity became ineligible for this view
-			view.remove(entity)
-		} else {
-			// by removing this component, the entity became eligible for this view
-			if view.matchesEntitySignature(newsig) {
-				view.upsert(entity)
-			}
-		}
-	}
-	// remove from data
-	w.lock.RUnlock()
-	w.lock.Lock()
-	w.entities[entity] = w.entities[entity].xor(compflag)
-	w.lock.Unlock()
-	component.lock.Lock()
-	delete(component.data, entity)
-	component.lock.Unlock()
-	// call destructor if exists
-	if destructor != nil {
-		destructor(w, entity, ldata)
-	}
-
-	return nil
+	return w.entities[i].Flag
 }
 
-// RemoveEntity removes an entity from the world (and all components)
-func (w *World) RemoveEntity(entity Entity) bool {
-	w.lock.RLock()
-	eflag, ok := w.entities[entity]
-	if !ok {
-		w.lock.RUnlock()
+func (w *World) C(id string) BaseComponent {
+	// All componets should already be loaded at this point,
+	// so no locking is done
+	//
+	// w.l.Lock()
+	// defer w.l.Unlock()
+	return w.components[id]
+}
+
+func (w *World) S(id string) BaseSystem {
+	w.l.RLock()
+	defer w.l.RUnlock()
+	return w.syscache[id]
+}
+
+func (w *World) CAdded(e Entity, c BaseComponent, key [4]byte) {
+	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
+		panic("CAdded forbidden")
+	}
+	i := w.entityindex(e)
+	w.entities[i].Flag = w.entities[i].Flag.Or(c.Flag())
+	for _, sys := range w.systems {
+		sys.ComponentAdded(e, w.entities[i].Flag)
+	}
+}
+
+func (w *World) CRemoved(e Entity, c BaseComponent, key [4]byte) {
+	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
+		panic("CRemoved forbidden")
+	}
+	i := w.entityindex(e)
+	w.entities[i].Flag = w.entities[i].Flag.Xor(c.Flag())
+	for _, sys := range w.systems {
+		sys.ComponentRemoved(e, w.entities[i].Flag)
+	}
+}
+
+func (w *World) NewEntity() Entity {
+	w.l.Lock()
+	w.lentity++
+	e := w.lentity
+	w.entities = append(w.entities, EntityFlag{
+		Entity: e,
+		Flag:   NewFlagRaw(0, 0, 0, 0),
+	})
+	w.l.Unlock()
+	return e
+}
+
+func (w *World) RemoveEntity(e Entity) bool {
+	w.l.RLock()
+	i := w.entityindex(e)
+	if i == -1 {
+		w.l.RUnlock()
 		return false
 	}
-	comps := make([]*Component, 0, len(w.components))
-	for cflag, c := range w.components {
-		if eflag.contains(cflag) {
-			comps = append(comps, c)
+	f := w.entities[i].Flag
+	w.l.RUnlock()
+	for _, comp := range w.components {
+		if f.Contains(comp.Flag()) {
+			//TODO: optimize by ignoring CRemoved from this entity
+			comp.Remove(e)
 		}
 	}
-	w.lock.RUnlock()
-	for _, comp := range comps {
-		_ = w.RemoveComponentFromEntity(entity, comp)
-	}
-	w.lock.Lock()
-	delete(w.entities, entity)
-	w.lock.Unlock()
+	w.l.Lock()
+	w.entities = w.entities[:i+copy(w.entities[i:], w.entities[i+1:])]
+	w.l.Unlock()
 	return true
 }
 
-// Query will return all entities (and components) that contain the
-// combination of components.
-func (w *World) Query(components ...*Component) []QueryMatch {
-	flag0 := newflag(0, 0, 0, 0)
-	for _, comp := range components {
-		flag0 = flag0.or(comp.flag)
+// AddSystem returns an error if the system was already added
+func (w *World) AddSystem(s BaseSystem) error {
+	w.l.Lock()
+	defer w.l.Unlock()
+	if _, ok := w.syscache[s.UUID()]; ok {
+		return errors.New("system already added (UUID: " + s.UUID() + " Name: " + s.Name() + ")")
 	}
-	results := make([]QueryMatch, 0)
-	w.lock.RLock()
-	defer w.lock.RUnlock()
-	for entity, eflag := range w.entities {
-		if eflag.contains(flag0) {
-			mmap := make(map[*Component]interface{})
-			for _, comp := range components {
-				comp.lock.RLock()
-				mmap[comp] = comp.data[entity]
-				comp.lock.RUnlock()
-			}
-			match := QueryMatch{
-				Entity:     entity,
-				Components: mmap,
-			}
-			results = append(results, match)
+	w.syscache[s.UUID()] = s
+	w.systems = append(w.systems, s)
+	if len(w.systems) > 1 {
+		sort.SliceStable(w.systems, func(i, j int) bool {
+			return w.systems[i].Priority() > w.systems[j].Priority()
+		})
+	}
+	s.Setup(w)
+	return nil
+}
+
+func (w *World) RemoveSystem(s BaseSystem) {
+	w.l.Lock()
+	defer w.l.Unlock()
+	if _, ok := w.syscache[s.UUID()]; !ok {
+		return
+	}
+	delete(w.syscache, s.UUID())
+	i := -1
+	for k, v := range w.systems {
+		if v.UUID() == s.UUID() {
+			i = k
+			break
 		}
 	}
-	return results
-}
-
-// QueryMask will return all entities (and components) that contain the
-// combination of components, excluding excludemask.
-func (w *World) QueryMask(excludemask []*Component, includemask []*Component) []QueryMatch {
-	flag0 := newflag(0, 0, 0, 0)
-	negflag := newflag(0, 0, 0, 0)
-	for _, comp := range includemask {
-		flag0 = flag0.or(comp.flag)
-	}
-	for _, comp := range excludemask {
-		negflag = negflag.or(comp.flag)
-	}
-	results := make([]QueryMatch, 0)
-	w.lock.RLock()
-	defer w.lock.RUnlock()
-	for entity, eflag := range w.entities {
-		if eflag.contains(flag0) && eflag.and(negflag).iszero() {
-			mmap := make(map[*Component]interface{})
-			for _, comp := range includemask {
-				comp.lock.RLock()
-				mmap[comp] = comp.data[entity]
-				comp.lock.RUnlock()
-			}
-			match := QueryMatch{
-				Entity:     entity,
-				Components: mmap,
-			}
-			results = append(results, match)
+	if i != -1 {
+		w.systems = w.systems[:i+copy(w.systems[i:], w.systems[i+1:])]
+		if len(w.systems) > 1 {
+			sort.SliceStable(w.systems, func(i, j int) bool {
+				return w.systems[i].Priority() > w.systems[j].Priority()
+			})
 		}
 	}
-	return results
 }
 
-// Run will iterate through all systems loop function (sorted by priority).
-func (w *World) Run(delta float64) (taken time.Duration) {
-	t0 := time.Now()
-	w.lock.RLock()
-	allsystems := w.systems
-	w.lock.RUnlock()
-	rctx := context.Background()
-	for _, system := range allsystems {
-		system.runfn(w.ctxbuilder(rctx, delta, system, w))
-	}
-	return time.Now().Sub(t0)
+func (w *World) Init() {
+	w.components = make(map[string]BaseComponent)
+	w.systems = make([]BaseSystem, 0)
+	w.syscache = make(map[string]BaseSystem)
+	w.entities = make([]EntityFlag, 0)
+	w.key = [4]byte{10, 227, 227, 9}
 }
 
-// RunWithTag will iterate through all systems that contain the given tag (sorted by priority).
-func (w *World) RunWithTag(tag string, delta float64) (taken time.Duration) {
-	t0 := time.Now()
-	w.lock.RLock()
-	allsystems := w.systems
-	w.lock.RUnlock()
-	rctx := context.Background()
-	for _, system := range allsystems {
-		if !system.ContainsTag(tag) {
-			continue
+func (w *World) EachSystem(fn func(s BaseSystem) bool) {
+	w.l.RLock()
+	clone := make([]BaseSystem, 0, len(w.systems))
+	for _, v := range w.systems {
+		if v.Enabled() {
+			clone = append(clone, v)
 		}
-		system.runfn(w.ctxbuilder(rctx, delta, system, w))
 	}
-	return time.Now().Sub(t0)
-}
-
-// RunWithoutTag will iterate through all systems that don't contain the given tag (sorted by priority).
-func (w *World) RunWithoutTag(tag string, delta float64) (taken time.Duration) {
-	t0 := time.Now()
-	w.lock.RLock()
-	allsystems := w.systems
-	w.lock.RUnlock()
-	rctx := context.Background()
-	for _, system := range allsystems {
-		if system.ContainsTag(tag) {
-			continue
+	w.l.RUnlock()
+	for _, s := range clone {
+		if !fn(s) {
+			return
 		}
-		system.runfn(w.ctxbuilder(rctx, delta, system, w))
 	}
-	return time.Now().Sub(t0)
 }
 
-// Get a global variable
-func (w *World) Get(key string) interface{} {
-	return w.globals.Get(key)
-}
-
-// Set a global variable
-func (w *World) Set(key string, val interface{}) {
-	w.globals.Set(key, val)
+func NewWorld() BaseWorld {
+	w := &World{}
+	w.Init()
+	return w
 }

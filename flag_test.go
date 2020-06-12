@@ -22,12 +22,12 @@ func randstringarray(count int) []string {
 	return ll
 }
 
-func randflags(count int) []flag {
+func randflags(count int) []Flag {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	ll := make([]flag, count)
+	ll := make([]Flag, count)
 	for i := 0; i < count; i++ {
 		wlen := uint8(r.Intn(256))
-		ll[i] = newflagbit(wlen)
+		ll[i] = NewFlag(wlen)
 	}
 	return ll
 }
@@ -42,29 +42,29 @@ func randindexes(maxval, count int) []int {
 }
 
 func TestFlagEquals(t *testing.T) {
-	a := newflag(1, 0, 1, 0)
-	b := newflag(1, 0, 0, 0)
-	if a.equals(b) {
+	a := NewFlagRaw(1, 0, 1, 0)
+	b := NewFlagRaw(1, 0, 0, 0)
+	if a.Equals(b) {
 		t.Fail()
 	}
-	c := newflag(1, 0, 1, 0)
-	if !a.equals(c) {
+	c := NewFlagRaw(1, 0, 1, 0)
+	if !a.Equals(c) {
 		t.Fail()
 	}
 }
 
 func TestFlagBitmap(t *testing.T) {
-	bmap := newflagbit(1).or(newflagbit(3)).or(newflagbit(200))
-	if bmap.contains(newflagbit(2)) {
+	bmap := NewFlag(1).Or(NewFlag(3)).Or(NewFlag(200))
+	if bmap.Contains(NewFlag(2)) {
 		t.Fail()
 	}
-	if bmap.contains(newflagbit(199)) {
+	if bmap.Contains(NewFlag(199)) {
 		t.Fail()
 	}
-	if !bmap.contains(newflagbit(200)) {
+	if !bmap.Contains(NewFlag(200)) {
 		t.Fail()
 	}
-	if !bmap.contains(newflagbit(1)) {
+	if !bmap.Contains(NewFlag(1)) {
 		t.Fail()
 	}
 }
@@ -89,14 +89,14 @@ func BenchmarkFlag128(b *testing.B) {
 	b.StopTimer()
 	set0 := randflags(128)
 	indexes := randindexes(128, 512)
-	master := newflag(0, 0, 0, 0)
+	master := NewFlagRaw(0, 0, 0, 0)
 	for _, v := range set0 {
-		master = master.or(v)
+		master = master.Or(v)
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i += 512 {
 		for j := 0; j < 512; j++ {
-			_ = master.contains(set0[indexes[j]])
+			_ = master.Contains(set0[indexes[j]])
 		}
 	}
 }
