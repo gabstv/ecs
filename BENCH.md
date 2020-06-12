@@ -8,7 +8,7 @@ BenchmarkV1Views100000-4   	     175	   6904582 ns/op	      96 B/op	       2 all
 BenchmarkV2Views100000-4   	    1780	    682237 ns/op	      32 B/op	       1 allocs/op
 ```
 
-With the same components and sytems, V2.x is 10x faster.
+With the same components and sytems, v2.x is 10x faster.
 
 bench_test.go
 ```go
