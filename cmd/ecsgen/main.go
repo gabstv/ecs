@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/gabstv/ecs/rx"
+	"github.com/gabstv/ecs/v2/rx"
 	"github.com/urfave/cli"
 )
 
