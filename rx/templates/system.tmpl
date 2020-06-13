@@ -63,6 +63,19 @@ func (v *{{$view}}) indexof(e ecs.Entity) int {
     return -1
 }
 
+// Fetch a specific entity
+func (v *{{$view}}) Fetch(e ecs.Entity) (data {{$viewitem}}, ok bool) {
+    {{if .Async}}
+    v.l.RLock()
+    defer v.l.RUnlock()
+    {{end}}
+    i := v.indexof(e)
+    if i == -1 {
+        return {{$viewitem}}{}, false
+    }
+    return v.entities[i], true
+}
+
 func (v *{{$view}}) Add(e ecs.Entity) bool {
     {{if .Async}}v.l.Lock(){{end}}
     {{if .Async}}defer v.l.Unlock(){{end}}
