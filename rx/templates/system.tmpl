@@ -6,7 +6,7 @@ import (
     {{if .Async}}"sync"{{end}}
     "sort"
 
-    "github.com/gabstv/ecs"
+    "github.com/gabstv/ecs/v2"
 )
 
 {{$type := (printf "%sSystem" .Name)}}
@@ -134,50 +134,55 @@ func ({{$type}}) Name() string {
 // ensure matchfn
 var _ ecs.MatchFn = {{$matchfn}}
 
-func (c *{{$type}}) match(eflag ecs.Flag) bool {
-    return {{$matchfn}}(eflag, c.world)
+func (s *{{$type}}) match(eflag ecs.Flag) bool {
+    return {{$matchfn}}(eflag, s.world)
 }
 
-func (c *{{$type}}) ComponentAdded(e ecs.Entity, eflag ecs.Flag) {
-    if c.match(eflag) {
-        if c.view.Add(e) {
+func (s *{{$type}}) ComponentAdded(e ecs.Entity, eflag ecs.Flag) {
+    if s.match(eflag) {
+        if s.view.Add(e) {
             // TODO: dispatch event that this entity was added to this system
+            {{if .Vars.EntityAdded}}{{.Vars.EntityAdded}}{{end}}
         }
     } else {
-        if c.view.Remove(e) {
+        if s.view.Remove(e) {
             // TODO: dispatch event that this entity was removed from this system
+            {{if .Vars.EntityRemoved}}{{.Vars.EntityRemoved}}{{end}}
         }
     }
 }
 
-func (c *{{$type}}) ComponentRemoved(e ecs.Entity, eflag ecs.Flag) {
-    if c.match(eflag) {
-        if c.view.Add(e) {
+func (s *{{$type}}) ComponentRemoved(e ecs.Entity, eflag ecs.Flag) {
+    if s.match(eflag) {
+        if s.view.Add(e) {
             // TODO: dispatch event that this entity was added to this system
+            {{if .Vars.EntityAdded}}{{.Vars.EntityAdded}}{{end}}
         }
     } else {
-        if c.view.Remove(e) {
+        if s.view.Remove(e) {
             // TODO: dispatch event that this entity was removed from this system
+            {{if .Vars.EntityRemoved}}{{.Vars.EntityRemoved}}{{end}}
         }
     }
 }
 
-func (c *{{$type}}) V() *{{$view}} {
-    return c.view
+func (s *{{$type}}) V() *{{$view}} {
+    return s.view
 }
 
-func (c *{{$type}}) Priority() int64 {
+func (*{{$type}}) Priority() int64 {
     return {{$priority}}
 }
 
-func (c *{{$type}}) Setup(w ecs.BaseWorld) {
-    if c.initialized {
+func (s *{{$type}}) Setup(w ecs.BaseWorld) {
+    if s.initialized {
         panic("{{$type}} called Setup() more than once")
     }
-    c.view = new{{$view}}(w)
-    c.world = w
-    c.enabled = true
-    c.initialized = true
+    s.view = new{{$view}}(w)
+    s.world = w
+    s.enabled = true
+    s.initialized = true
+    {{if .Vars.Setup}}{{.Vars.Setup}}{{end}}
 }
 
 {{if not .SkipRegister}}
