@@ -52,6 +52,9 @@ func main() {
 		cli.BoolFlag{
 			Name: "component-tpl",
 		},
+		cli.StringSliceFlag{
+			Name: "members",
+		},
 	}
 	app.Action = run
 	if err := app.Run(os.Args); err != nil {
@@ -67,6 +70,8 @@ func run(c *cli.Context) error {
 	async := c.Bool("async")
 	rawvars := c.StringSlice("vars")
 	rawviewitems := c.StringSlice("components")
+	rawmembers := c.StringSlice("members")
+	members := make([]NameType, 0)
 	vars := make(map[string]string)
 	viewitems := make([]map[string]string, 0)
 	for _, v := range rawvars {
@@ -98,6 +103,19 @@ func run(c *cli.Context) error {
 			item["Getter"] = fmt.Sprintf("Get%sComponent(v.world).Data(e)", vsplit[0])
 		}
 		viewitems = append(viewitems, item)
+	}
+	for _, v := range rawmembers {
+		vs := strings.SplitN(v, "=", 2)
+		if len(vs) == 2 {
+			members = append(members, NameType{
+				Name: vs[0],
+				Type: vs[1],
+			})
+		} else {
+			members = append(members, NameType{
+				Name: vs[0],
+			})
+		}
 	}
 	var tpl *template.Template
 	if len(templatep) > 0 {
@@ -138,6 +156,7 @@ func run(c *cli.Context) error {
 		Vars         map[string]string
 		SkipRegister bool
 		ViewItems    []map[string]string
+		Members      []NameType
 	}{
 		Package:      packagen,
 		Name:         name,
@@ -145,6 +164,7 @@ func run(c *cli.Context) error {
 		Vars:         vars,
 		SkipRegister: c.Bool("skip-register"),
 		ViewItems:    viewitems,
+		Members:      members,
 	}
 	f, err := os.Create(c.String("output"))
 	if err != nil {
@@ -155,4 +175,9 @@ func run(c *cli.Context) error {
 		return err
 	}
 	return nil
+}
+
+type NameType struct {
+	Name string
+	Type string
 }
