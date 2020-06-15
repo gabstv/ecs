@@ -95,7 +95,7 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
     }
     {{if .Async}}c.l.Lock(){{end}}
     rsz := false
-    if cap(a.data) == len(a.data) {
+    if cap(c.data) == len(c.data) {
         rsz = true
     }
     newindex := len(c.data)
