@@ -129,6 +129,7 @@ func (c *{{$type}}) Remove(e ecs.Entity) {
     //c.data = append(c.data[:i], c.data[i+1:]...)
     c.data = c.data[:i+copy(c.data[i:], c.data[i+1:])]
     c.world.CRemoved(e, c, c.wkey)
+    {{if .Vars.OnRemove}}{{.Vars.OnRemove}}{{end}}
 }
 
 func (c *{{$type}}) Data(e ecs.Entity) *{{.Name}} {

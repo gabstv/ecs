@@ -117,6 +117,7 @@ func (v *{{$view}}) rescan() {
         x.{{$v.Name}} = {{$v.Getter}}
         {{end}}
         _ = e
+        {{if .Vars.ViewRescan}}{{.Vars.ViewRescan}}{{end}}
     }
 }
 
