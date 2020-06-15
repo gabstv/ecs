@@ -113,6 +113,7 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
     if rsz {
         c.world.CResized(c, c.wkey)
     }
+    {{if .Vars.OnAdd}}{{.Vars.OnAdd}}{{end}}
 }
 
 // Remove a {{.Name}} data from entity e
