@@ -118,6 +118,7 @@ func (c *{{$type}}) Remove(e ecs.Entity) {
     if i == -1 {
         return
     }
+    {{if .Vars.BeforeRemove}}{{.Vars.BeforeRemove}}{{end}}
     //c.data = append(c.data[:i], c.data[i+1:]...)
     c.data = c.data[:i+copy(c.data[i:], c.data[i+1:])]
     c.world.CRemoved(e, c, c.wkey)
