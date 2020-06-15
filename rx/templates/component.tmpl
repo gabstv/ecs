@@ -94,6 +94,12 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
         return
     }
     {{if .Async}}c.l.Lock(){{end}}
+    {{if .Vars.Resized}}
+    rsz := false
+    if cap(a.data) == len(a.data) {
+        rsz = true
+    }
+    {{end}}
     newindex := len(c.data)
     c.data = append(c.data, {{$drawertype}}{
         Entity: e,
@@ -105,6 +111,11 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
         }
     }
     {{if .Async}}c.l.Unlock(){{end}}
+    {{if .Vars.Resized}}
+    if rsz {
+        {{.Vars.Resized}}
+    }
+    {{end}}
     c.world.CAdded(e, c, c.wkey)
 }
 
