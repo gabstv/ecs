@@ -91,6 +91,15 @@ func (w *World) CRemoved(e Entity, c BaseComponent, key [4]byte) {
 	}
 }
 
+func (w *World) CResized(c BaseComponent, key [4]byte) {
+	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
+		panic("CResized forbidden")
+	}
+	for _, sys := range w.systems {
+		sys.ComponentResized(c.Flag())
+	}
+}
+
 func (w *World) NewEntity() Entity {
 	w.l.Lock()
 	w.lentity++

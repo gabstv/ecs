@@ -12,6 +12,7 @@ import (
 {{$type := (printf "%sSystem" .Name)}}
 {{$uuid := (or .Vars.UUID $type)}}
 {{$matchfn := (or .Vars.Match (printf "match%s" $type))}}
+{{$resizematchfn := (or .Vars.ResizeMatch (printf "resizematch%s" $type))}}
 {{$view := (printf "view%s" $type)}}
 {{$viewitem := (printf "VI%s" $type)}}
 {{$priority := (or .Vars.Priority "0")}}
@@ -107,6 +108,18 @@ func (v *{{$view}}) Remove(e ecs.Entity) bool {
     return false
 }
 
+func (v *{{$view}}) rescan() {
+    {{if .Async}}v.l.Lock(){{end}}
+    {{if .Async}}defer v.l.Unlock(){{end}}
+    for _, x := range v.entities {
+        e := x.Entity
+        {{range $v := .ViewItems}}
+        x.{{$v.Name}} = {{$v.Getter}}
+        {{end}}
+        _ = e
+    }
+}
+
 // {{$type}} implements ecs.BaseSystem
 type {{$type}} struct {
     initialized bool
@@ -150,8 +163,15 @@ func ({{$type}}) Name() string {
 // ensure matchfn
 var _ ecs.MatchFn = {{$matchfn}}
 
+// ensure resizematchfn
+var _ ecs.MatchFn = {{$resizematchfn}}
+
 func (s *{{$type}}) match(eflag ecs.Flag) bool {
     return {{$matchfn}}(eflag, s.world)
+}
+
+func (s *{{$type}}) resizematch(eflag ecs.Flag) bool {
+    return {{$resizematchfn}}(eflag, s.world)
 }
 
 func (s *{{$type}}) ComponentAdded(e ecs.Entity, eflag ecs.Flag) {
@@ -179,6 +199,12 @@ func (s *{{$type}}) ComponentRemoved(e ecs.Entity, eflag ecs.Flag) {
             // TODO: dispatch event that this entity was removed from this system
             {{if .Vars.EntityRemoved}}{{.Vars.EntityRemoved}}{{end}}
         }
+    }
+}
+
+func (s *{{$type}}) ComponentResized(cflag ecs.Flag) {
+    if s.resizematch(cflag) {
+        s.view.rescan()
     }
 }
 

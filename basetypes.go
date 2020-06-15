@@ -19,6 +19,7 @@ type BaseSystem interface {
 	Name() string
 	ComponentAdded(e Entity, eflag Flag)
 	ComponentRemoved(e Entity, eflag Flag)
+	ComponentResized(cflag Flag)
 	//V() View
 	Priority() int64
 	Setup(w BaseWorld)
@@ -37,6 +38,7 @@ type BaseWorld interface {
 	S(id string) BaseSystem
 	CAdded(e Entity, c BaseComponent, key [4]byte)
 	CRemoved(e Entity, c BaseComponent, key [4]byte)
+	CResized(c BaseComponent, key [4]byte)
 	AddSystem(s BaseSystem) error
 	RemoveSystem(s BaseSystem)
 	EachSystem(func(s BaseSystem) bool)
