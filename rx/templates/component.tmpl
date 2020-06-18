@@ -48,7 +48,7 @@ func (w *m{{$watchertype}}) Entity() ecs.Entity {
 func (w *m{{$watchertype}}) Data() *{{.Name}} {
     {{if .Async}}w.c.l.RLock(){{end}}
     {{if .Async}}defer w.c.l.RUnlock(){{end}}
-    id := c.indexof(e)
+    id := w.c.indexof(w.entity)
     if id == -1 {
         return nil
     }
