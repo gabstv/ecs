@@ -42,6 +42,9 @@ type BaseWorld interface {
 	AddSystem(s BaseSystem) error
 	RemoveSystem(s BaseSystem)
 	EachSystem(func(s BaseSystem) bool)
+	Dispatch(e Event)
+	Listen(mask EventType, fn EventFn) int64
+	RemoveListener(id int64)
 }
 
 type View interface {

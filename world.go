@@ -16,6 +16,10 @@ type World struct {
 
 	entities []EntityFlag
 	key      [4]byte
+
+	ei    int64
+	evts  map[int64]*EventListener
+	evtfs map[EventType]map[int64]*EventListener
 }
 
 func (w *World) RegisterComponent(c BaseComponent) {
@@ -181,6 +185,11 @@ func (w *World) Init() {
 	w.syscache = make(map[string]BaseSystem)
 	w.entities = make([]EntityFlag, 0)
 	w.key = [4]byte{10, 227, 227, 9}
+	w.evts = make(map[int64]*EventListener)
+	w.evtfs = make(map[EventType]map[int64]*EventListener)
+	for _, t := range allevents {
+		w.evtfs[t] = make(map[int64]*EventListener)
+	}
 }
 
 func (w *World) EachSystem(fn func(s BaseSystem) bool) {
@@ -197,6 +206,53 @@ func (w *World) EachSystem(fn func(s BaseSystem) bool) {
 			return
 		}
 	}
+}
+
+func (w *World) Dispatch(e Event) {
+	w.l.RLock()
+	m := w.evtfs[e.Type]
+	evs := make([]EventFn, 0, len(m))
+	for _, v := range m {
+		evs = append(evs, v.Fn)
+	}
+	w.l.RUnlock()
+	for _, v := range evs {
+		v(e)
+	}
+}
+
+func (w *World) Listen(mask EventType, fn EventFn) int64 {
+	w.l.Lock()
+	defer w.l.Unlock()
+	w.ei++
+	id := w.ei
+	x := &EventListener{
+		ID:   id,
+		Fn:   fn,
+		Mask: mask,
+	}
+	w.evts[id] = x
+	for _, t := range allevents {
+		if mask&t == t {
+			w.evtfs[t][id] = x
+		}
+	}
+	return id
+}
+
+func (w *World) RemoveListener(id int64) {
+	w.l.Lock()
+	defer w.l.Unlock()
+	l, ok := w.evts[id]
+	if !ok {
+		return
+	}
+	for _, t := range allevents {
+		if l.Mask&t == t {
+			delete(w.evtfs[t], l.ID)
+		}
+	}
+	delete(w.evts, l.ID)
 }
 
 func NewWorld() BaseWorld {

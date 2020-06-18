@@ -3,10 +3,8 @@
 package {{.Package}}
 
 import (
-    {{if .Async}}
-    "sync"
-    {{end}}
     "sort"
+    {{if .Async}}"sync"{{end}}
 
     "github.com/gabstv/ecs/v2"
 )
@@ -16,6 +14,7 @@ import (
 {{$uuid := (or .Vars.UUID $type)}}
 {{$drawertype := (printf "drawer%s" $type)}}
 {{$drawertypeslc := (printf "slcdrawer%s" $type)}}
+{{$watchertype := (printf "Watch%s" .Name)}}
 
 const uuid{{$type}} = "{{$uuid}}"
 const cap{{$type}} = {{$cap}}
@@ -25,10 +24,36 @@ type {{$drawertype}} struct {
     Data   {{.Name}}
 }
 
+// {{$watchertype}} is a helper struct to access a valid pointer of {{.Name}}
+type {{$watchertype}} interface {
+    Entity() ecs.Entity
+    Data() *{{.Name}}
+}
+
 type {{$drawertypeslc}} []{{$drawertype}}
 func (a {{$drawertypeslc}}) Len() int           { return len(a) }
 func (a {{$drawertypeslc}}) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a {{$drawertypeslc}}) Less(i, j int) bool { return a[i].Entity < a[j].Entity }
+
+
+type m{{$watchertype}} struct {
+    c *{{$type}}
+    entity ecs.Entity
+}
+
+func (w *m{{$watchertype}}) Entity() ecs.Entity {
+    return w.entity
+}
+
+func (w *m{{$watchertype}}) Data() *{{.Name}} {
+    {{if .Async}}w.c.l.RLock(){{end}}
+    {{if .Async}}defer w.c.l.RUnlock(){{end}}
+    id := c.indexof(e)
+    if id == -1 {
+        return nil
+    }
+    return &w.c.data[id].Data
+}
 
 // {{$type}} implements ecs.BaseComponent
 type {{$type}} struct {
@@ -37,9 +62,7 @@ type {{$type}} struct {
     world       ecs.BaseWorld
     wkey        [4]byte
     data        []{{$drawertype}}
-    {{if .Async}}
-    l           sync.RWMutex
-    {{end}}
+    {{if .Async}}l           sync.RWMutex{{end}}
 }
 
 // Get{{$type}} returns the instance of the component in a World
@@ -55,6 +78,16 @@ func Set{{$type}}Data(w ecs.BaseWorld, e ecs.Entity, data {{.Name}}) {
 // Get{{$type}}Data gets the *{{.Name}} of Entity e
 func Get{{$type}}Data(w ecs.BaseWorld, e ecs.Entity) *{{.Name}} {
     return Get{{$type}}(w).Data(e)
+}
+
+// Watch{{$type}}Data gets a pointer getter of an entity's {{.Name}}.
+//
+// The pointer must not be stored because it may become invalid overtime.
+func Watch{{$type}}Data(w ecs.BaseWorld, e ecs.Entity) {{$watchertype}} {
+    return &m{{$watchertype}}{
+        c: Get{{$type}}(w),
+        entity: e,
+    }
 }
 
 // UUID implements ecs.BaseComponent
