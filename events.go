@@ -15,6 +15,7 @@ var allevents = [...]EventType{EvtComponentAdded, EvtComponentRemoved, EvtCompon
 type Event struct {
 	Type          EventType
 	ComponentName string
+	ComponentID   string
 	Entity        Entity
 }
 

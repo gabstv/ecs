@@ -145,8 +145,19 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
     c.world.CAdded(e, c, c.wkey)
     if rsz {
         c.world.CResized(c, c.wkey)
+        c.world.Dispatch(ecs.Event{
+            Type: ecs.EvtComponentAdded,
+            ComponentName: "{{$type}}",
+            ComponentID: "{{$uuid}}",
+        })
     }
     {{if .Vars.OnAdd}}{{.Vars.OnAdd}}{{end}}
+    c.world.Dispatch(ecs.Event{
+        Type: ecs.EvtComponentAdded,
+        ComponentName: "{{$type}}",
+        ComponentID: "{{$uuid}}",
+        Entity: e,
+    })
 }
 
 // Remove a {{.Name}} data from entity e
@@ -164,6 +175,12 @@ func (c *{{$type}}) Remove(e ecs.Entity) {
     c.data = c.data[:i+copy(c.data[i:], c.data[i+1:])]
     c.world.CRemoved(e, c, c.wkey)
     {{if .Vars.OnRemove}}{{.Vars.OnRemove}}{{end}}
+    c.world.Dispatch(ecs.Event{
+        Type: ecs.EvtComponentRemoved,
+        ComponentName: "{{$type}}",
+        ComponentID: "{{$uuid}}",
+        Entity: e,
+    })
 }
 
 func (c *{{$type}}) Data(e ecs.Entity) *{{.Name}} {
