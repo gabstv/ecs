@@ -142,16 +142,17 @@ func (c *RotationComponent) Upsert(e ecs.Entity, data interface{}) {
         }
     }
     
-    c.world.CAdded(e, c, c.wkey)
     if rsz {
+        
         c.world.CResized(c, c.wkey)
         c.world.Dispatch(ecs.Event{
-            Type: ecs.EvtComponentAdded,
+            Type: ecs.EvtComponentsResized,
             ComponentName: "RotationComponent",
             ComponentID: "56890133-3769-477A-B163-412C5ECC6B07",
         })
     }
     
+    c.world.CAdded(e, c, c.wkey)
     c.world.Dispatch(ecs.Event{
         Type: ecs.EvtComponentAdded,
         ComponentName: "RotationComponent",

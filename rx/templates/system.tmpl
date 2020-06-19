@@ -206,6 +206,7 @@ func (s *{{$type}}) ComponentRemoved(e ecs.Entity, eflag ecs.Flag) {
 func (s *{{$type}}) ComponentResized(cflag ecs.Flag) {
     if s.resizematch(cflag) {
         s.view.rescan()
+        {{if .Vars.OnResize}}{{.Vars.OnResize}}{{end}}
     }
 }
 

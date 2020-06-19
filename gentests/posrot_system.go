@@ -200,6 +200,7 @@ func (s *PosRotSystem) ComponentRemoved(e ecs.Entity, eflag ecs.Flag) {
 func (s *PosRotSystem) ComponentResized(cflag ecs.Flag) {
     if s.resizematch(cflag) {
         s.view.rescan()
+        
     }
 }
 
