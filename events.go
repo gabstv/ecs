@@ -3,10 +3,10 @@ package ecs
 type EventType uint
 
 const (
-	EvtNone              EventType = iota
-	EvtComponentAdded    EventType = 1 << iota
-	EvtComponentRemoved  EventType = 1 << iota
-	EvtComponentsResized EventType = 1 << iota
+	EvtNone              EventType = 0
+	EvtComponentAdded    EventType = 1 << 0
+	EvtComponentRemoved  EventType = 1 << 1
+	EvtComponentsResized EventType = 1 << 2
 	EvtAny               EventType = 0b11111111111111111111111111111111
 )
 

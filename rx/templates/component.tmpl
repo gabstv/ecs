@@ -146,7 +146,7 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
     if rsz {
         c.world.CResized(c, c.wkey)
         c.world.Dispatch(ecs.Event{
-            Type: ecs.EvtComponentAdded,
+            Type: ecs.EvtComponentsResized,
             ComponentName: "{{$type}}",
             ComponentID: "{{$uuid}}",
         })
