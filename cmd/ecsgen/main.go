@@ -55,6 +55,10 @@ func main() {
 		cli.StringSliceFlag{
 			Name: "members",
 		},
+		cli.StringSliceFlag{
+			Name:  "go-import",
+			Usage: "Import Go package",
+		},
 	}
 	app.Action = run
 	if err := app.Run(os.Args); err != nil {
@@ -67,6 +71,7 @@ func run(c *cli.Context) error {
 	name := c.String("name")
 	packagen := c.String("package")
 	templatep := c.StringSlice("template")
+	goimports := c.StringSlice("go-import")
 	async := c.Bool("async")
 	rawvars := c.StringSlice("vars")
 	rawviewitems := c.StringSlice("components")
@@ -157,6 +162,7 @@ func run(c *cli.Context) error {
 		SkipRegister bool
 		ViewItems    []map[string]string
 		Members      []NameType
+		Imports      []string
 	}{
 		Package:      packagen,
 		Name:         name,
@@ -165,6 +171,7 @@ func run(c *cli.Context) error {
 		SkipRegister: c.Bool("skip-register"),
 		ViewItems:    viewitems,
 		Members:      members,
+		Imports:      goimports,
 	}
 	f, err := os.Create(c.String("output"))
 	if err != nil {

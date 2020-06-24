@@ -7,6 +7,9 @@ import (
     "sort"
 
     "github.com/gabstv/ecs/v2"
+    {{range $v := .Imports}}
+    {{$v}}
+    {{end}}
 )
 
 {{$type := (printf "%sSystem" .Name)}}
