@@ -1,5 +1,7 @@
 package ecs
 
+import "strings"
+
 type EventType uint
 
 const (
@@ -25,4 +27,43 @@ type EventListener struct {
 	ID   int64
 	Mask EventType
 	Fn   EventFn
+}
+
+func (t EventType) String() string {
+	switch t {
+	case EvtNone:
+		return "EvtNone"
+	case EvtComponentAdded:
+		return "EvtComponentAdded"
+	case EvtComponentRemoved:
+		return "EvtComponentRemoved"
+	case EvtComponentsResized:
+		return "EvtComponentsResized"
+	case EvtAny:
+		return "EvtAny"
+	}
+	v := strings.Builder{}
+	n := 0
+	if t&EvtComponentAdded == EvtComponentAdded {
+		if n > 0 {
+			v.WriteRune('|')
+		}
+		v.WriteString("EvtComponentAdded")
+		n++
+	}
+	if t&EvtComponentRemoved == EvtComponentRemoved {
+		if n > 0 {
+			v.WriteRune('|')
+		}
+		v.WriteString("EvtComponentRemoved")
+		n++
+	}
+	if t&EvtComponentsResized == EvtComponentsResized {
+		if n > 0 {
+			v.WriteRune('|')
+		}
+		v.WriteString("EvtComponentsResized")
+		n++
+	}
+	return v.String()
 }
