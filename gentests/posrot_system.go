@@ -103,6 +103,20 @@ func (v *viewPosRotSystem) Remove(e ecs.Entity) bool {
     return false
 }
 
+func (v *viewPosRotSystem) clearpointers() {
+    
+    
+    for _, x := range v.entities {
+        e := x.Entity
+        
+        x.Position = nil
+        
+        x.Rotation = nil
+        
+        _ = e
+    }
+}
+
 func (v *viewPosRotSystem) rescan() {
     
     
@@ -202,6 +216,13 @@ func (s *PosRotSystem) ComponentResized(cflag ecs.Flag) {
     if s.resizematch(cflag) {
         s.view.rescan()
         
+    }
+}
+
+func (s *PosRotSystem) ComponentWillResize(cflag ecs.Flag) {
+    if s.resizematch(cflag) {
+        
+        s.view.clearpointers()
     }
 }
 

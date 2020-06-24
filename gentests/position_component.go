@@ -139,6 +139,7 @@ func (c *PositionComponent) Upsert(e ecs.Entity, data interface{}) {
     if len(c.data) > 1 {
         if c.data[newindex].Entity < c.data[newindex-1].Entity {
             sort.Sort(slcdrawerPositionComponent(c.data))
+            rsz = true
         }
     }
     

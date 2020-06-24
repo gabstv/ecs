@@ -111,6 +111,18 @@ func (v *{{$view}}) Remove(e ecs.Entity) bool {
     return false
 }
 
+func (v *{{$view}}) clearpointers() {
+    {{if .Async}}v.l.Lock(){{end}}
+    {{if .Async}}defer v.l.Unlock(){{end}}
+    for _, x := range v.entities {
+        e := x.Entity
+        {{range $v := .ViewItems}}
+        x.{{$v.Name}} = nil
+        {{end}}
+        _ = e
+    }
+}
+
 func (v *{{$view}}) rescan() {
     {{if .Async}}v.l.Lock(){{end}}
     {{if .Async}}defer v.l.Unlock(){{end}}
@@ -210,6 +222,13 @@ func (s *{{$type}}) ComponentResized(cflag ecs.Flag) {
     if s.resizematch(cflag) {
         s.view.rescan()
         {{if .Vars.OnResize}}{{.Vars.OnResize}}{{end}}
+    }
+}
+
+func (s *{{$type}}) ComponentWillResize(cflag ecs.Flag) {
+    if s.resizematch(cflag) {
+        {{if .Vars.OnWillResize}}{{.Vars.OnWillResize}}{{end}}
+        s.view.clearpointers()
     }
 }
 
