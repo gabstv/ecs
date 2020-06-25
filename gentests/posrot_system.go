@@ -106,12 +106,12 @@ func (v *viewPosRotSystem) Remove(e ecs.Entity) bool {
 func (v *viewPosRotSystem) clearpointers() {
     
     
-    for _, x := range v.entities {
-        e := x.Entity
+    for i := range v.entities {
+        e := v.entities[i].Entity
         
-        x.Position = nil
+        v.entities[i].Position = nil
         
-        x.Rotation = nil
+        v.entities[i].Rotation = nil
         
         _ = e
     }
@@ -120,12 +120,12 @@ func (v *viewPosRotSystem) clearpointers() {
 func (v *viewPosRotSystem) rescan() {
     
     
-    for _, x := range v.entities {
-        e := x.Entity
+    for i := range v.entities {
+        e := v.entities[i].Entity
         
-        x.Position = GetPositionComponent(v.world).Data(e)
+        v.entities[i].Position = GetPositionComponent(v.world).Data(e)
         
-        x.Rotation = GetRotationComponent(v.world).Data(e)
+        v.entities[i].Rotation = GetRotationComponent(v.world).Data(e)
         
         _ = e
         

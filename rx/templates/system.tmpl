@@ -114,10 +114,10 @@ func (v *{{$view}}) Remove(e ecs.Entity) bool {
 func (v *{{$view}}) clearpointers() {
     {{if .Async}}v.l.Lock(){{end}}
     {{if .Async}}defer v.l.Unlock(){{end}}
-    for _, x := range v.entities {
-        e := x.Entity
+    for i := range v.entities {
+        e := v.entities[i].Entity
         {{range $v := .ViewItems}}
-        x.{{$v.Name}} = nil
+        v.entities[i].{{$v.Name}} = nil
         {{end}}
         _ = e
     }
@@ -126,10 +126,10 @@ func (v *{{$view}}) clearpointers() {
 func (v *{{$view}}) rescan() {
     {{if .Async}}v.l.Lock(){{end}}
     {{if .Async}}defer v.l.Unlock(){{end}}
-    for _, x := range v.entities {
-        e := x.Entity
+    for i := range v.entities {
+        e := v.entities[i].Entity
         {{range $v := .ViewItems}}
-        x.{{$v.Name}} = {{$v.Getter}}
+        v.entities[i].{{$v.Name}} = {{$v.Getter}}
         {{end}}
         _ = e
         {{if .Vars.ViewRescan}}{{.Vars.ViewRescan}}{{end}}
