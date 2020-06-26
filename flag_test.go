@@ -85,6 +85,35 @@ func TestFlagContainsAny(t *testing.T) {
 	}
 }
 
+func TestFlag(t *testing.T) {
+	f := NewFlag(192)
+	if f.IsZero() {
+		t.Fail()
+	}
+}
+
+func TestFlagLowest(t *testing.T) {
+	if NewFlag(5).Lowest() != 5 {
+		t.Fail()
+	}
+	if NewFlag(210).Lowest() != 210 {
+		t.Fail()
+	}
+	if NewFlag(63).Lowest() != 63 {
+		t.Fail()
+	}
+	y := NewFlag(192)
+	yl := y.Lowest()
+	if yl != 192 {
+		t.Fail()
+	}
+	z := NewFlag(1).Or(NewFlag(6))
+	zl := z.Lowest()
+	if zl != 1 {
+		t.Fail()
+	}
+}
+
 func BenchmarkStringMap128(b *testing.B) {
 	b.StopTimer()
 	set0 := randstringarray(128)

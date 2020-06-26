@@ -45,6 +45,37 @@ func (f Flag) IsZero() bool {
 	return f[0] == 0 && f[1] == 0 && f[2] == 0 && f[3] == 0
 }
 
+// Lowest bit position (set to 1)
+func (f Flag) Lowest() uint8 {
+	ff := uint64(0xffffffffffffffff)
+	if f[0]&ff > 0 {
+		v, _ := ubit(f[0])
+		return v
+	}
+	if f[1]&ff > 0 {
+		v, _ := ubit(f[1])
+		return v + 64
+	}
+	if f[2]&ff > 0 {
+		v, _ := ubit(f[2])
+		return v + 128
+	}
+	if f[3]&ff > 0 {
+		v, _ := ubit(f[3])
+		return v + 192
+	}
+	return 0
+}
+
+func ubit(v uint64) (uint8, bool) {
+	for i := 0; i < 64; i++ {
+		if v&(uint64(1<<i)) == (uint64(1 << i)) {
+			return uint8(i), true
+		}
+	}
+	return 0, false
+}
+
 // NewFlagRaw creates a new flag
 func NewFlagRaw(a, b, c, d uint64) Flag {
 	return Flag{a, b, c, d}
@@ -53,11 +84,11 @@ func NewFlagRaw(a, b, c, d uint64) Flag {
 // NewFlag creates a new flag
 func NewFlag(bit uint8) Flag {
 	var a, b, c, d uint64
-	if bit > 192 {
+	if bit >= 192 {
 		d = 1 << (bit - 192)
-	} else if bit > 128 {
+	} else if bit >= 128 {
 		c = 1 << (bit - 128)
-	} else if bit > 64 {
+	} else if bit >= 64 {
 		b = 1 << (bit - 64)
 	} else {
 		a = 1 << bit
