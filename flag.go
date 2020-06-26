@@ -35,6 +35,11 @@ func (f Flag) Contains(g Flag) bool {
 	return f.And(g).Equals(g)
 }
 
+// ContainsAny tests if f contains at least one bit of g
+func (f Flag) ContainsAny(g Flag) bool {
+	return !f.And(g).IsZero()
+}
+
 // IsZero returns true if all bits are zero
 func (f Flag) IsZero() bool {
 	return f[0] == 0 && f[1] == 0 && f[2] == 0 && f[3] == 0

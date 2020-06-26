@@ -47,6 +47,8 @@ type BaseWorld interface {
 	Dispatch(e Event)
 	Listen(mask EventType, fn EventFn) int64
 	RemoveListener(id int64)
+	SetFlagGroup(name string, f Flag)
+	FlagGroup(name string) Flag
 }
 
 type View interface {

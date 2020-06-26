@@ -69,6 +69,22 @@ func TestFlagBitmap(t *testing.T) {
 	}
 }
 
+func TestFlagContainsAny(t *testing.T) {
+	big := NewFlag(1).Or(NewFlag(2)).Or(NewFlag(3)).Or(NewFlag(4)).Or(NewFlag(5))
+	if !big.ContainsAny(NewFlag(4)) {
+		t.Fail()
+	}
+	if big.ContainsAny(NewFlag(6)) {
+		t.Fail()
+	}
+	if !big.ContainsAny(NewFlag(6).Or(NewFlag(2))) {
+		t.Fail()
+	}
+	if !big.ContainsAny(NewFlag(4).Or(NewFlag(2))) {
+		t.Fail()
+	}
+}
+
 func BenchmarkStringMap128(b *testing.B) {
 	b.StopTimer()
 	set0 := randstringarray(128)

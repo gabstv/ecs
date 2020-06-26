@@ -20,6 +20,9 @@ type World struct {
 	ei    int64
 	evts  map[int64]*EventListener
 	evtfs map[EventType]map[int64]*EventListener
+
+	flaggroupsm sync.RWMutex
+	flaggroups  map[string]Flag
 }
 
 func (w *World) RegisterComponent(c BaseComponent) {
@@ -186,6 +189,23 @@ func (w *World) RemoveSystem(s BaseSystem) {
 			})
 		}
 	}
+}
+
+func (w *World) SetFlagGroup(name string, f Flag) {
+	w.flaggroupsm.Lock()
+	defer w.flaggroupsm.Unlock()
+	if w.flaggroups == nil {
+		w.flaggroups = make(map[string]Flag)
+	}
+	w.flaggroups[name] = f
+}
+func (w *World) FlagGroup(name string) Flag {
+	w.flaggroupsm.RLock()
+	defer w.flaggroupsm.RUnlock()
+	if w.flaggroups == nil {
+		return Flag{}
+	}
+	return w.flaggroups[name]
 }
 
 func (w *World) Init() {
