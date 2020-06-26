@@ -216,6 +216,7 @@ func (c *{{$type}}) Setup(w ecs.BaseWorld, f ecs.Flag, key [4]byte) {
     c.wkey = key
     c.data = make([]{{$drawertype}}, 0, {{$cap}})
     c.initialized = true
+    {{if .Vars.Setup}}{{.Vars.Setup}}{{end}}
 }
 
 {{if not .SkipRegister}}
