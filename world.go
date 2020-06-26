@@ -23,6 +23,8 @@ type World struct {
 
 	flaggroupsm sync.RWMutex
 	flaggroups  map[string]Flag
+
+	locker Locker
 }
 
 func (w *World) RegisterComponent(c BaseComponent) {
@@ -199,6 +201,7 @@ func (w *World) SetFlagGroup(name string, f Flag) {
 	}
 	w.flaggroups[name] = f
 }
+
 func (w *World) FlagGroup(name string) Flag {
 	w.flaggroupsm.RLock()
 	defer w.flaggroupsm.RUnlock()
@@ -206,6 +209,14 @@ func (w *World) FlagGroup(name string) Flag {
 		return Flag{}
 	}
 	return w.flaggroups[name]
+}
+
+func (w *World) LGet(name string) interface{} {
+	return w.locker.Item(name)
+}
+
+func (w *World) LSet(name string, value interface{}) {
+	w.locker.SetItem(name, value)
 }
 
 func (w *World) Init() {

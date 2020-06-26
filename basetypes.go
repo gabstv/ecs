@@ -49,6 +49,8 @@ type BaseWorld interface {
 	RemoveListener(id int64)
 	SetFlagGroup(name string, f Flag)
 	FlagGroup(name string) Flag
+	LGet(name string) interface{}
+	LSet(name string, value interface{})
 }
 
 type View interface {
