@@ -1,6 +1,6 @@
 package rx
 
-import "aletheia.icu/broccoli/fs"
+import "github.com/montanaflynn/broccoli/fs"
 
 //go:generate broccoli -var=rx -src templates -include *.tmpl
 
