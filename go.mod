@@ -1,4 +1,4 @@
-module github.com/gabstv/ecs/v2
+module github.com/gabstv/ecs/v3
 
 go 1.13
 

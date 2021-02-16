@@ -4,7 +4,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/gabstv/ecs/v2"
+	"github.com/gabstv/ecs/v3"
 )
 
 func TestResize(t *testing.T) {

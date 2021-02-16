@@ -1,7 +1,7 @@
 package gentests
 
 import (
-	"github.com/gabstv/ecs/v2"
+	"github.com/gabstv/ecs/v3"
 )
 
 type Position struct {

@@ -6,7 +6,7 @@ import (
     
     "sort"
 
-    "github.com/gabstv/ecs/v2"
+    "github.com/gabstv/ecs/v3"
     
 )
 
