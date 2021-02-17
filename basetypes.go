@@ -2,19 +2,19 @@ package ecs
 
 type Entity uint64
 
-type RegisterComponentFn func() BaseComponent
-type RegisterSystemFn func() BaseSystem
+type RegisterComponentFn func() Component
+type RegisterSystemFn func() System
 
-type BaseComponent interface {
+type Component interface {
 	UUID() string
 	Name() string
 	Flag() Flag
-	Setup(w BaseWorld, f Flag, key [4]byte)
+	Setup(w World, f Flag, key [4]byte)
 	Upsert(e Entity, data interface{})
 	Remove(e Entity)
 }
 
-type BaseSystem interface {
+type System interface {
 	UUID() string
 	Name() string
 	ComponentAdded(e Entity, eflag Flag)
@@ -23,27 +23,27 @@ type BaseSystem interface {
 	ComponentResized(cflag Flag)
 	//V() View
 	Priority() int64
-	Setup(w BaseWorld)
+	Setup(w World)
 	Enable()
 	Disable()
 	Enabled() bool
 }
 
-type BaseWorld interface {
-	RegisterComponent(c BaseComponent)
+type World interface {
+	RegisterComponent(c Component)
 	IsRegistered(id string) bool
 	CFlag(e Entity) Flag
 	NewEntity() Entity
 	RemoveEntity(e Entity) bool
-	C(id string) BaseComponent
-	S(id string) BaseSystem
-	CAdded(e Entity, c BaseComponent, key [4]byte)
-	CRemoved(e Entity, c BaseComponent, key [4]byte)
-	CWillResize(c BaseComponent, key [4]byte)
-	CResized(c BaseComponent, key [4]byte)
-	AddSystem(s BaseSystem) error
-	RemoveSystem(s BaseSystem)
-	EachSystem(func(s BaseSystem) bool)
+	C(id string) Component
+	S(id string) System
+	CAdded(e Entity, c Component, key [4]byte)
+	CRemoved(e Entity, c Component, key [4]byte)
+	CWillResize(c Component, key [4]byte)
+	CResized(c Component, key [4]byte)
+	AddSystem(s System) error
+	RemoveSystem(s System)
+	EachSystem(func(s System) bool)
 	Dispatch(e Event)
 	Listen(mask EventType, fn EventFn) int64
 	RemoveListener(id int64)

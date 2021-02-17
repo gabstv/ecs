@@ -6,7 +6,7 @@ import (
     "sort"
     {{if .Async}}"sync"{{end}}
 
-    "github.com/gabstv/ecs/v3"
+    "github.com/gabstv/ecs/v2"
 )
 
 {{$type := (printf "%sComponent" .Name)}}
@@ -27,8 +27,7 @@ type {{$drawertype}} struct {
 // {{$watchertype}} is a helper struct to access a valid pointer of {{.Name}}
 type {{$watchertype}} interface {
     Entity() ecs.Entity
-    Data() {{.Name}}
-    SetData(data {{.Name}})
+    Data() *{{.Name}}
 }
 
 type {{$drawertypeslc}} []{{$drawertype}}
@@ -46,7 +45,7 @@ func (w *m{{$watchertype}}) Entity() ecs.Entity {
     return w.entity
 }
 
-func (w *m{{$watchertype}}) Data() {{.Name}} {
+func (w *m{{$watchertype}}) Data() *{{.Name}} {
     {{if .Async}}w.c.l.RLock(){{end}}
     {{if .Async}}defer w.c.l.RUnlock(){{end}}
     id := w.c.indexof(w.entity)
@@ -54,16 +53,6 @@ func (w *m{{$watchertype}}) Data() {{.Name}} {
         return nil
     }
     return &w.c.data[id].Data
-}
-
-func (w *m{{$watchertype}}) SetData(data {{.Name}}) {
-    {{if .Async}}w.c.l.Lock(){{end}}
-    {{if .Async}}defer w.c.l.Unlock(){{end}}
-    id := w.c.indexof(w.entity)
-    if id == -1 {
-        return
-    }
-    w.c.data[id].Data = data
 }
 
 // {{$type}} implements ecs.BaseComponent
@@ -86,8 +75,8 @@ func Set{{$type}}Data(w ecs.BaseWorld, e ecs.Entity, data {{.Name}}) {
     Get{{$type}}(w).Upsert(e, data)
 }
 
-// Get{{$type}}Data gets the {{.Name}} of Entity e
-func Get{{$type}}Data(w ecs.BaseWorld, e ecs.Entity) {{.Name}} {
+// Get{{$type}}Data gets the *{{.Name}} of Entity e
+func Get{{$type}}Data(w ecs.BaseWorld, e ecs.Entity) *{{.Name}} {
     return Get{{$type}}(w).Data(e)
 }
 
@@ -103,7 +92,7 @@ func Watch{{$type}}Data(w ecs.BaseWorld, e ecs.Entity) {{$watchertype}} {
 
 // UUID implements ecs.BaseComponent
 func ({{$type}}) UUID() string {
-    return "{{$uuid}}"
+    return uuid{{$type}}
 }
 
 // Name implements ecs.BaseComponent
@@ -164,7 +153,7 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
         c.world.Dispatch(ecs.Event{
             Type: ecs.EvtComponentsResized,
             ComponentName: "{{$type}}",
-            ComponentID: "{{$uuid}}",
+            ComponentID: uuid{{$type}},
         })
     }
     {{if .Vars.OnAdd}}{{.Vars.OnAdd}}{{end}}
@@ -172,7 +161,7 @@ func (c *{{$type}}) Upsert(e ecs.Entity, data interface{}) {
     c.world.Dispatch(ecs.Event{
         Type: ecs.EvtComponentAdded,
         ComponentName: "{{$type}}",
-        ComponentID: "{{$uuid}}",
+        ComponentID: uuid{{$type}},
         Entity: e,
     })
 }
@@ -195,17 +184,17 @@ func (c *{{$type}}) Remove(e ecs.Entity) {
     c.world.Dispatch(ecs.Event{
         Type: ecs.EvtComponentRemoved,
         ComponentName: "{{$type}}",
-        ComponentID: "{{$uuid}}",
+        ComponentID: uuid{{$type}},
         Entity: e,
     })
 }
 
-func (c *{{$type}}) Data(e ecs.Entity) {{.Name}} {
+func (c *{{$type}}) Data(e ecs.Entity) *{{.Name}} {
     {{if .Async}}c.l.RLock(){{end}}
     {{if .Async}}defer c.l.RUnlock(){{end}}
     index := c.indexof(e)
     if index > -1 {
-        return c.data[index].Data
+        return &c.data[index].Data
     }
     return nil
 }

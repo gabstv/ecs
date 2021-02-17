@@ -31,7 +31,7 @@ func RegisterSystem(fn RegisterSystemFn) {
 	defaultSystems[c.UUID()] = fn
 }
 
-func RegisterWorldDefaults(w BaseWorld) {
+func RegisterWorldDefaults(w World) {
 	defaultLock.Lock()
 	defer defaultLock.Unlock()
 	for uuid, fn := range defaultComponents {

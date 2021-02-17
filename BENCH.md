@@ -98,7 +98,7 @@ type TestPolo struct {
 }
 
 type System interface {
-	ecs.BaseSystem
+	ecs.System
 	Update(dt float64)
 }
 
@@ -107,7 +107,7 @@ type World struct {
 }
 
 func (w *World) Update(dt float64) {
-	w.EachSystem(func(s ecs.BaseSystem) bool {
+	w.EachSystem(func(s ecs.System) bool {
 		s.(System).Update(dt)
 		return true
 	})
@@ -125,11 +125,11 @@ func NewWorld() *World {
 //go:generate go run ../../../cmd/ecsgen/main.go -n Marco -p bench -o marco_system.go -t ../../../templates/system.tmpl --vars "UUID=A8C56294-1FE1-4BE8-BABF-29697B822D1B" --vars "Priority=100" --components "TestMarco"
 //go:generate go run ../../../cmd/ecsgen/main.go -n MarcoPolo -p bench -o marcopolo_system.go -t ../../../templates/system.tmpl --vars "UUID=7EA57F45-51A4-4367-B147-340A279C091A" --vars "Priority=99" --components "TestMarco" --components "TestPolo"
 
-var matchMarcoSystem = func(f ecs.Flag, w ecs.BaseWorld) bool {
+var matchMarcoSystem = func(f ecs.Flag, w ecs.World) bool {
 	return f.Contains(GetTestMarcoComponent(w).Flag())
 }
 
-var matchMarcoPoloSystem = func(f ecs.Flag, w ecs.BaseWorld) bool {
+var matchMarcoPoloSystem = func(f ecs.Flag, w ecs.World) bool {
 	return f.Contains(GetTestMarcoComponent(w).Flag().Or(GetTestPoloComponent(w).Flag()))
 }
 

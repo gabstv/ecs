@@ -6,7 +6,7 @@ import (
     {{if .Async}}"sync"{{end}}
     "sort"
 
-    "github.com/gabstv/ecs/v3"
+    "github.com/gabstv/ecs/v2"
     {{range $v := .Imports}}
     {{$v}}
     {{end}}
@@ -169,7 +169,7 @@ func (s *{{$type}}) Enabled() bool {
 
 // UUID implements ecs.BaseSystem
 func ({{$type}}) UUID() string {
-    return "{{$uuid}}"
+    return uuid{{$type}}
 }
 
 func ({{$type}}) Name() string {

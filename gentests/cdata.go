@@ -1,7 +1,7 @@
 package gentests
 
 import (
-	"github.com/gabstv/ecs/v3"
+	"github.com/gabstv/ecs/v2"
 )
 
 type Position struct {
@@ -19,11 +19,11 @@ type Rotation struct {
 
 //go:generate go run ../cmd/ecsgen/main.go -n PosRot -p gentests -o posrot_system.go --system-tpl --vars "Priority=0" --vars "UUID=58FFC3BE-7BC8-4381-A93B-74945405F171" --components "Position" --components "Rotation"
 
-var matchPosRotSystem = func(eflag ecs.Flag, w ecs.BaseWorld) bool {
+var matchPosRotSystem = func(eflag ecs.Flag, w ecs.World) bool {
 	return eflag.Contains(GetPositionComponent(w).flag.Or(GetRotationComponent(w).Flag()))
 }
 
-var resizematchPosRotSystem = func(eflag ecs.Flag, w ecs.BaseWorld) bool {
+var resizematchPosRotSystem = func(eflag ecs.Flag, w ecs.World) bool {
 	if eflag.Contains(GetPositionComponent(w).Flag()) {
 		return true
 	}

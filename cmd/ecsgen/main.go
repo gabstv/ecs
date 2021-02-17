@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/gabstv/ecs/v3/rx"
+	"github.com/gabstv/ecs/v2/rx"
 	"github.com/urfave/cli"
 )
 
@@ -20,8 +20,9 @@ func main() {
 			Usage: "Template: {{.Name}}",
 		},
 		cli.StringFlag{
-			Name:  "package, p",
-			Usage: "Package: {{.Package}}",
+			Name:   "package, p",
+			Usage:  "Package: {{.Package}}",
+			EnvVar: "GOPACKAGE",
 		},
 		cli.StringSliceFlag{
 			Name:  "template, t",
@@ -37,7 +38,8 @@ func main() {
 			Name: "vars",
 		},
 		cli.StringFlag{
-			Name: "output, o",
+			Name:   "output, o",
+			EnvVar: "GOFILE",
 		},
 		cli.StringSliceFlag{
 			Name: "components",

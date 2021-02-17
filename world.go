@@ -6,13 +6,13 @@ import (
 	"sync"
 )
 
-type World struct {
+type world struct {
 	l          sync.RWMutex
 	lentity    Entity
 	lflag      uint8
-	components map[string]BaseComponent
-	systems    []BaseSystem
-	syscache   map[string]BaseSystem
+	components map[string]Component
+	systems    []System
+	syscache   map[string]System
 
 	entities []EntityFlag
 	key      [4]byte
@@ -27,7 +27,7 @@ type World struct {
 	locker Locker
 }
 
-func (w *World) RegisterComponent(c BaseComponent) {
+func (w *world) RegisterComponent(c Component) {
 	w.l.Lock()
 	defer w.l.Unlock()
 	if _, ok := w.components[c.UUID()]; ok {
@@ -38,14 +38,14 @@ func (w *World) RegisterComponent(c BaseComponent) {
 	w.lflag++
 }
 
-func (w *World) IsRegistered(id string) bool {
+func (w *world) IsRegistered(id string) bool {
 	w.l.RLock()
 	defer w.l.RUnlock()
 	_, ok := w.components[id]
 	return ok
 }
 
-func (w *World) entityindex(e Entity) int {
+func (w *world) entityindex(e Entity) int {
 	i := sort.Search(len(w.entities), func(i int) bool { return w.entities[i].Entity >= e })
 	if i < len(w.entities) && w.entities[i].Entity == e {
 		return i
@@ -53,7 +53,7 @@ func (w *World) entityindex(e Entity) int {
 	return -1
 }
 
-func (w *World) CFlag(e Entity) Flag {
+func (w *world) CFlag(e Entity) Flag {
 	w.l.RLock()
 	defer w.l.RUnlock()
 	i := w.entityindex(e)
@@ -63,7 +63,7 @@ func (w *World) CFlag(e Entity) Flag {
 	return w.entities[i].Flag
 }
 
-func (w *World) C(id string) BaseComponent {
+func (w *world) C(id string) Component {
 	// All componets should already be loaded at this point,
 	// so no locking is done
 	//
@@ -72,13 +72,13 @@ func (w *World) C(id string) BaseComponent {
 	return w.components[id]
 }
 
-func (w *World) S(id string) BaseSystem {
+func (w *world) S(id string) System {
 	w.l.RLock()
 	defer w.l.RUnlock()
 	return w.syscache[id]
 }
 
-func (w *World) CAdded(e Entity, c BaseComponent, key [4]byte) {
+func (w *world) CAdded(e Entity, c Component, key [4]byte) {
 	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
 		panic("CAdded forbidden")
 	}
@@ -89,7 +89,7 @@ func (w *World) CAdded(e Entity, c BaseComponent, key [4]byte) {
 	}
 }
 
-func (w *World) CRemoved(e Entity, c BaseComponent, key [4]byte) {
+func (w *world) CRemoved(e Entity, c Component, key [4]byte) {
 	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
 		panic("CRemoved forbidden")
 	}
@@ -100,7 +100,7 @@ func (w *World) CRemoved(e Entity, c BaseComponent, key [4]byte) {
 	}
 }
 
-func (w *World) CWillResize(c BaseComponent, key [4]byte) {
+func (w *world) CWillResize(c Component, key [4]byte) {
 	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
 		panic("CWillResize forbidden")
 	}
@@ -109,7 +109,7 @@ func (w *World) CWillResize(c BaseComponent, key [4]byte) {
 	}
 }
 
-func (w *World) CResized(c BaseComponent, key [4]byte) {
+func (w *world) CResized(c Component, key [4]byte) {
 	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
 		panic("CResized forbidden")
 	}
@@ -118,7 +118,7 @@ func (w *World) CResized(c BaseComponent, key [4]byte) {
 	}
 }
 
-func (w *World) NewEntity() Entity {
+func (w *world) NewEntity() Entity {
 	w.l.Lock()
 	w.lentity++
 	e := w.lentity
@@ -130,7 +130,7 @@ func (w *World) NewEntity() Entity {
 	return e
 }
 
-func (w *World) RemoveEntity(e Entity) bool {
+func (w *world) RemoveEntity(e Entity) bool {
 	w.l.RLock()
 	i := w.entityindex(e)
 	if i == -1 {
@@ -152,7 +152,7 @@ func (w *World) RemoveEntity(e Entity) bool {
 }
 
 // AddSystem returns an error if the system was already added
-func (w *World) AddSystem(s BaseSystem) error {
+func (w *world) AddSystem(s System) error {
 	w.l.Lock()
 	defer w.l.Unlock()
 	if _, ok := w.syscache[s.UUID()]; ok {
@@ -169,7 +169,7 @@ func (w *World) AddSystem(s BaseSystem) error {
 	return nil
 }
 
-func (w *World) RemoveSystem(s BaseSystem) {
+func (w *world) RemoveSystem(s System) {
 	w.l.Lock()
 	defer w.l.Unlock()
 	if _, ok := w.syscache[s.UUID()]; !ok {
@@ -193,7 +193,7 @@ func (w *World) RemoveSystem(s BaseSystem) {
 	}
 }
 
-func (w *World) SetFlagGroup(name string, f Flag) {
+func (w *world) SetFlagGroup(name string, f Flag) {
 	w.flaggroupsm.Lock()
 	defer w.flaggroupsm.Unlock()
 	if w.flaggroups == nil {
@@ -202,7 +202,7 @@ func (w *World) SetFlagGroup(name string, f Flag) {
 	w.flaggroups[name] = f
 }
 
-func (w *World) FlagGroup(name string) Flag {
+func (w *world) FlagGroup(name string) Flag {
 	w.flaggroupsm.RLock()
 	defer w.flaggroupsm.RUnlock()
 	if w.flaggroups == nil {
@@ -211,18 +211,18 @@ func (w *World) FlagGroup(name string) Flag {
 	return w.flaggroups[name]
 }
 
-func (w *World) LGet(name string) interface{} {
+func (w *world) LGet(name string) interface{} {
 	return w.locker.Item(name)
 }
 
-func (w *World) LSet(name string, value interface{}) {
+func (w *world) LSet(name string, value interface{}) {
 	w.locker.SetItem(name, value)
 }
 
-func (w *World) Init() {
-	w.components = make(map[string]BaseComponent)
-	w.systems = make([]BaseSystem, 0)
-	w.syscache = make(map[string]BaseSystem)
+func (w *world) Init() {
+	w.components = make(map[string]Component)
+	w.systems = make([]System, 0)
+	w.syscache = make(map[string]System)
 	w.entities = make([]EntityFlag, 0)
 	w.key = [4]byte{10, 227, 227, 9}
 	w.evts = make(map[int64]*EventListener)
@@ -232,9 +232,9 @@ func (w *World) Init() {
 	}
 }
 
-func (w *World) EachSystem(fn func(s BaseSystem) bool) {
+func (w *world) EachSystem(fn func(s System) bool) {
 	w.l.RLock()
-	clone := make([]BaseSystem, 0, len(w.systems))
+	clone := make([]System, 0, len(w.systems))
 	for _, v := range w.systems {
 		if v.Enabled() {
 			clone = append(clone, v)
@@ -248,7 +248,7 @@ func (w *World) EachSystem(fn func(s BaseSystem) bool) {
 	}
 }
 
-func (w *World) Dispatch(e Event) {
+func (w *world) Dispatch(e Event) {
 	w.l.RLock()
 	m := w.evtfs[e.Type]
 	evs := make([]EventFn, 0, len(m))
@@ -261,7 +261,7 @@ func (w *World) Dispatch(e Event) {
 	}
 }
 
-func (w *World) Listen(mask EventType, fn EventFn) int64 {
+func (w *world) Listen(mask EventType, fn EventFn) int64 {
 	w.l.Lock()
 	defer w.l.Unlock()
 	w.ei++
@@ -280,7 +280,7 @@ func (w *World) Listen(mask EventType, fn EventFn) int64 {
 	return id
 }
 
-func (w *World) RemoveListener(id int64) {
+func (w *world) RemoveListener(id int64) {
 	w.l.Lock()
 	defer w.l.Unlock()
 	l, ok := w.evts[id]
@@ -295,8 +295,8 @@ func (w *World) RemoveListener(id int64) {
 	delete(w.evts, l.ID)
 }
 
-func NewWorld() BaseWorld {
-	w := &World{}
+func NewWorld() World {
+	w := &world{}
 	w.Init()
 	return w
 }

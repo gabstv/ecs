@@ -1,6 +1,6 @@
 package ecs
 
-type MatchFn func(f Flag, w BaseWorld) bool
+type MatchFn func(f Flag, w World) bool
 
 // SortedEntities implements sort.Interface
 type SortedEntities []Entity
