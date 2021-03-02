@@ -47,7 +47,7 @@ type Rotation struct {
 // Velocity component
 //
 // ecs:component
-// uuid:3FE319D0-5CA8-4844-8EBF-1F6A9B8AD5C3
+// the uuid for this component is generated automatically
 type Velocity struct {
 	X       float64
 	Y       float64

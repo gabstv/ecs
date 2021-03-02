@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"encoding/hex"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -227,6 +229,17 @@ func run(c *cli.Context) error {
 
 			if ctx.uuid == "" {
 				//TODO: generate uuid on the fly
+				blk := []byte{}
+				blk = append(blk, []byte(packageName)...)
+				blk = append(blk, []byte(gofile)...)
+				blk = append(blk, []byte(out)...)
+				blk = append(blk, []byte(ctx.name)...)
+				sha1sum := sha1.Sum(blk)
+				ctx.uuid = hex.EncodeToString(sha1sum[:4]) + "-" + hex.EncodeToString(sha1sum[4:6]) + "-"
+				bit := hex.EncodeToString(sha1sum[6:7])
+				ctx.uuid = ctx.uuid + "4" + bit[1:]
+				ctx.uuid = ctx.uuid + hex.EncodeToString(sha1sum[7:8]) + "-"
+				ctx.uuid = ctx.uuid + hex.EncodeToString(sha1sum[8:10]) + "-" + hex.EncodeToString(sha1sum[10:16])
 			}
 
 			pos := fset.Position(end)

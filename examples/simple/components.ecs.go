@@ -433,7 +433,7 @@ func init() {
 }
 
 const (
-	uuidVelocityComponent = "3FE319D0-5CA8-4844-8EBF-1F6A9B8AD5C3"
+	uuidVelocityComponent = "d1ceb219-c860-49ac-9a4d-2ab99e1477c8"
 	capVelocityComponent  = 256
 )
 
