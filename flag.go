@@ -95,3 +95,12 @@ func NewFlag(bit uint8) Flag {
 	}
 	return Flag{a, b, c, d}
 }
+
+// MergeFlags performs an OR operation to return a single flag
+func MergeFlags(f ...Flag) Flag {
+	out := Flag{}
+	for _, v := range f {
+		out = out.Or(v)
+	}
+	return out
+}

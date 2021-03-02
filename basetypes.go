@@ -10,23 +10,19 @@ type Component interface {
 	Name() string
 	Flag() Flag
 	Setup(w World, f Flag, key [4]byte)
-	Upsert(e Entity, data interface{})
-	Remove(e Entity)
+	Upsert(e Entity, data interface{}) bool
+	Remove(e Entity) bool
+	World() World
 }
 
-type System interface {
-	UUID() string
-	Name() string
-	ComponentAdded(e Entity, eflag Flag)
-	ComponentRemoved(e Entity, eflag Flag)
-	ComponentWillResize(cflag Flag)
-	ComponentResized(cflag Flag)
-	//V() View
-	Priority() int64
-	Setup(w World)
-	Enable()
-	Disable()
-	Enabled() bool
+// DispatchComponentEvent is a helper to dispatch component events
+func DispatchComponentEvent(c Component, t EventType, e Entity) {
+	c.World().Dispatch(Event{
+		Type:          t,
+		ComponentName: c.Name(),
+		ComponentID:   c.UUID(),
+		Entity:        e,
+	})
 }
 
 type World interface {

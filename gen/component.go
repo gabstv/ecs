@@ -18,6 +18,12 @@ type ComponentDef struct {
 	InitialCap    int    // initial slice capacity (default: 256)
 	Async         bool   // Adds a mutex lock for accessing component data in parallel. Not recommended.
 	NoInit        bool   // if true, the generated code does not define an init() to register this component
+	OnWillResize  string // call a custom function before resizing
+	OnResized     string // call a custom function after resizing
+	OnAdd         string // call a custom function after adding a component to an entity
+	OnRemove      string // call a custom function after adding a component to an entity
+	OnWillRemove  string // call a custom function before removing a component from an entity
+	OnSetup       string // call a custom function after the setup
 }
 
 func (d ComponentDef) sanitize() ComponentDef {
@@ -222,6 +228,24 @@ func Component(f *jen.File, def ComponentDef) {
 
 func componentUpsert(f *jen.File, def ComponentDef, ids componentIDs) {
 
+	willResz := jen.Empty()
+
+	if def.OnWillResize != "" {
+		willResz = jen.Id("c").Dot(def.OnWillResize).Call()
+	}
+
+	resizedf := jen.Empty()
+
+	if def.OnResized != "" {
+		resizedf = jen.Id("c").Dot(def.OnResized).Call()
+	}
+
+	addedf := jen.Empty()
+
+	if def.OnAdd != "" {
+		addedf = jen.Id("c").Dot(def.OnAdd).Call(jen.Id("e"))
+	}
+
 	f.Comment("Upsert creates or updates a component data of an entity.")
 	f.Commentf("Not recommended to be used directly. Use Set%sData to change component", def.ComponentName)
 	f.Comment("data outside of a system loop.")
@@ -249,7 +273,7 @@ func componentUpsert(f *jen.File, def ComponentDef, ids componentIDs) {
 		jen.If(jen.Cap(jen.Id("c").Dot("data")).Op("==").Len(jen.Id("c").Dot("data"))).Block(
 			jen.Id("rsz").Op("=").Lit(true),
 			jen.Id("c").Dot("world").Dot("CWillResize").Call(jen.Id("c"), jen.Id("c").Dot("wkey")),
-			// TODO: {{if .Vars.OnWillResize}}{{.Vars.OnWillResize}}{{end}}
+			willResz,
 		),
 		jen.Id("newindex").Op(":=").Len(jen.Id("c").Dot("data")),
 		jen.Id("c").Dot("data").Op("=").Append(jen.Id("c").Dot("data"), jen.Id(ids.drawer).Block(
@@ -259,18 +283,18 @@ func componentUpsert(f *jen.File, def ComponentDef, ids componentIDs) {
 		jen.If(jen.Len(jen.Id("c").Dot("data")).Op(">").Lit(1)).Block(
 			jen.If(jen.Id("c").Dot("data").Index(jen.Id("newindex")).Dot("Entity").Op("<").Id("c").Dot("data").Index(jen.Id("newindex").Op("-").Lit(1)).Dot("Entity")).Block(
 				jen.Id("c").Dot("world").Dot("CWillResize").Call(jen.Id("c"), jen.Id("c").Dot("wkey")),
-				// TODO: {{if .Vars.OnWillResize}}{{.Vars.OnWillResize}}{{end}}
+				willResz,
 				jen.Qual("sort", "Sort").Call(jen.Id(ids.drawerSlice).Call(jen.Id("c").Dot("data"))),
 				jen.Id("rsz").Op("=").Lit(true),
 			),
 		),
 		mutexLU(def.Async, "c.l.Unlock", false),
 		jen.If(jen.Id("rsz")).Block(
-			// TODO: {{if .Vars.OnResize}}{{.Vars.OnResize}}{{end}}
+			resizedf,
 			jen.Id("c").Dot("world").Dot("CResized").Call(jen.Id("c"), jen.Id("c").Dot("wkey")),
 			jen.Qual(ecspkg, "DispatchComponentEvent").Call(jen.Id("c"), jen.Qual(ecspkg, "EvtComponentsResized"), jen.Lit(0)),
 		),
-		// TODO: {{if .Vars.OnAdd}}{{.Vars.OnAdd}}{{end}}
+		addedf,
 		jen.Id("c").Dot("world").Dot("CAdded").Call(jen.Id("e"), jen.Id("c"), jen.Id("c").Dot("wkey")),
 		jen.Qual(ecspkg, "DispatchComponentEvent").Call(jen.Id("c"), jen.Qual(ecspkg, "EvtComponentAdded"), jen.Id("e")),
 		jen.Return(),
@@ -292,6 +316,15 @@ func componentRemove(f *jen.File, def ComponentDef, ids componentIDs) {
 		return jen.Empty()
 	}
 
+	onrmv := jen.Empty()
+	if def.OnRemove != "" {
+		onrmv = jen.Id("c").Dot(def.OnRemove).Call(jen.Id("e"))
+	}
+	onWillRemove := jen.Empty()
+	if def.OnWillRemove != "" {
+		onWillRemove = jen.Id("c").Dot(def.OnWillRemove).Call(jen.Id("e"))
+	}
+
 	f.Commentf("Remove a %s data from entity e", def.StructName)
 	if def.Async {
 		f.Comment("Warning: DO NOT call remove inside the system entities loop")
@@ -302,7 +335,7 @@ func componentRemove(f *jen.File, def ComponentDef, ids componentIDs) {
 		unlock(),
 		jen.Id("i").Op(":=").Id("c").Dot("indexof").Call(jen.Id("e")),
 		jen.If(jen.Id("i").Op("==").Lit(-1)).Block(jen.Return(jen.Lit(false))),
-		// TODO: {{if .Vars.BeforeRemove}}{{.Vars.BeforeRemove}}{{end}}
+		onWillRemove,
 		jen.Id("c").Dot("data").Op("=").Id("c").Dot("data").Index(
 			jen.Empty(),
 			jen.Id("i").Op("+").Copy(
@@ -311,13 +344,19 @@ func componentRemove(f *jen.File, def ComponentDef, ids componentIDs) {
 			),
 		),
 		jen.Id("c").Dot("world").Dot("CRemoved").Call(jen.Id("e"), jen.Id("c"), jen.Id("c").Dot("wkey")),
-		// TODO: {{if .Vars.OnRemove}}{{.Vars.OnRemove}}{{end}}
+		onrmv,
 		jen.Qual(ecspkg, "DispatchComponentEvent").Call(jen.Id("c"), jen.Qual(ecspkg, "EvtComponentRemoved"), jen.Id("e")),
 		jen.Return(jen.Lit(true)),
 	)
 }
 
 func componentSetup(f *jen.File, def ComponentDef, ids componentIDs) {
+
+	onsetup := jen.Empty()
+	if def.OnSetup != "" {
+		onsetup = jen.Id("c").Dot(def.OnSetup).Call(jen.Id("w"))
+	}
+
 	f.Comment("Setup is called by ecs.World")
 	f.Comment("Do not call this by yourself")
 	f.Func().Params(jen.Id("c").Op("*").Id(def.ComponentName)).Id("Setup").Params(
@@ -331,7 +370,7 @@ func componentSetup(f *jen.File, def ComponentDef, ids componentIDs) {
 		jen.Id("c").Dot("wkey").Op("=").Id("key"),
 		jen.Id("c").Dot("data").Op("=").Make(jen.Index().Id(ids.drawer), jen.Lit(0), jen.Id(ids.cap)),
 		jen.Id("c").Dot("initialized").Op("=").Lit(true),
-		// TODO: {{if .Vars.Setup}}{{.Vars.Setup}}{{end}}
+		onsetup,
 	)
 }
 

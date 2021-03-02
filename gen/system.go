@@ -39,7 +39,12 @@ type SystemDef struct {
 	// Custom function to add or remove an entity to this system
 	AddRemoveMatchFn *SystemMatchFn `toml:"add_remove_match_fn" json:"add_remove_match_fn"`
 	// Custom function to rescan all component references when a component slice changes capacity
-	ResizeMatchFn *SystemMatchFn `toml:"resize_match_fn" json:"resize_match_fn"`
+	ResizeMatchFn         *SystemMatchFn `toml:"resize_match_fn" json:"resize_match_fn"`
+	OnEntityAdded         string         `toml:"on_entity_added" json:"on_entity_added"`
+	OnEntityRemoved       string         `toml:"on_entity_removed" json:"on_entity_removed"`
+	OnComponentWillResize string         `toml:"on_component_will_resize" json:"on_component_will_resize"`
+	OnComponentResized    string         `toml:"on_component_resized" json:"on_component_resized"`
+	OnSetup               string         `toml:"on_setup" json:"on_setup"`
 }
 
 func (d SystemDef) sanitize() SystemDef {
@@ -113,7 +118,6 @@ func System(f *jen.File, def SystemDef) {
 		jen.Id("initialized").Bool(),
 		jen.Id("world").Qual(ecspkg, "World"),
 		jen.Id("view").Op("*").Id(ids.view),
-		// jen.Id("enabled").Bool(),
 		jen.Add(members...),
 	)
 
@@ -140,9 +144,6 @@ func System(f *jen.File, def SystemDef) {
 		f.Func().Id(def.AddRemoveMatchFn.Name).Params(jen.Id("f").Qual(ecspkg, "Flag"), jen.Id("w").Qual(ecspkg, "World")).Bool().Block(func() []jen.Code {
 			out := make([]jen.Code, 0)
 			for _, v := range def.Components {
-				// blk := jen.If(jen.Op("!").Qual(v.PackagePath, v.FlagGetter).Call(jen.Id("w")).Dot("Contains").Call(jen.Id("f"))).Block(
-				// 	jen.Return(jen.Lit(false)),
-				// )
 				blk := jen.If(jen.Op("!").Id("f").Dot("Contains").Call(jen.Qual(v.PackagePath, v.FlagGetter).Call(jen.Id("w")))).Block(
 					jen.Return(jen.Lit(false)),
 				)
@@ -177,16 +178,26 @@ func System(f *jen.File, def SystemDef) {
 		jen.Return(jen.Qual(def.ResizeMatchFn.PackagePath, def.ResizeMatchFn.Name).Call(jen.Id("eflag"), jen.Id("s").Dot("world"))),
 	)
 
+	enAdded := jen.Empty()
+	enRemoved := jen.Empty()
+
+	if def.OnEntityAdded != "" {
+		enAdded = jen.Id("s").Dot(def.OnEntityAdded).Call(jen.Id("e"))
+	}
+	if def.OnEntityRemoved != "" {
+		enRemoved = jen.Id("s").Dot(def.OnEntityRemoved).Call(jen.Id("e"))
+	}
+
 	f.Func().Params(sysPtr).Id("ComponentAdded").Params(jen.Id("e").Qual(ecspkg, "Entity"), jen.Id("eflag").Qual(ecspkg, "Flag")).Block(
 		jen.If(jen.Id("s").Dot("match").Call(jen.Id("eflag"))).Block(
 			jen.If(jen.Id("s").Dot("view").Dot("Add").Call(jen.Id("e"))).Block(
-			// TODO: dispatch event that this entity was added to this system
-			// {{if .Vars.EntityAdded}}{{.Vars.EntityAdded}}{{end}}
+				// TODO: dispatch event that this entity was added to this system
+				enAdded,
 			),
 		).Else().Block(
 			jen.If(jen.Id("s").Dot("view").Dot("Remove").Call(jen.Id("e"))).Block(
-			// TODO: dispatch event that this entity was removed from this system
-			// {{if .Vars.EntityRemoved}}{{.Vars.EntityRemoved}}{{end}}
+				// TODO: dispatch event that this entity was removed from this system
+				enRemoved,
 			),
 		),
 	)
@@ -194,27 +205,37 @@ func System(f *jen.File, def SystemDef) {
 	f.Func().Params(sysPtr).Id("ComponentRemoved").Params(jen.Id("e").Qual(ecspkg, "Entity"), jen.Id("eflag").Qual(ecspkg, "Flag")).Block(
 		jen.If(jen.Id("s").Dot("match").Call(jen.Id("eflag"))).Block(
 			jen.If(jen.Id("s").Dot("view").Dot("Add").Call(jen.Id("e"))).Block(
-			// TODO: dispatch event that this entity was added to this system
-			// {{if .Vars.EntityAdded}}{{.Vars.EntityAdded}}{{end}}
+				// TODO: dispatch event that this entity was added to this system
+				enAdded,
 			),
 		).Else().Block(
 			jen.If(jen.Id("s").Dot("view").Dot("Remove").Call(jen.Id("e"))).Block(
-			// TODO: dispatch event that this entity was removed from this system
-			// {{if .Vars.EntityRemoved}}{{.Vars.EntityRemoved}}{{end}}
+				// TODO: dispatch event that this entity was removed from this system
+				enRemoved,
 			),
 		),
 	)
 
+	cnResized := jen.Empty()
+	cnWillResize := jen.Empty()
+
+	if def.OnComponentResized != "" {
+		cnResized = jen.Id("s").Dot(def.OnComponentResized).Call(jen.Id("cflag"))
+	}
+	if def.OnComponentWillResize != "" {
+		cnWillResize = jen.Id("s").Dot(def.OnComponentWillResize).Call(jen.Id("cflag"))
+	}
+
 	f.Func().Params(sysPtr).Id("ComponentResized").Params(jen.Id("cflag").Qual(ecspkg, "Flag")).Block(
 		jen.If(jen.Id("s").Dot("resizematch").Call(jen.Id("cflag"))).Block(
 			jen.Id("s").Dot("view").Dot("rescan").Call(),
-			// {{if .Vars.OnResize}}{{.Vars.OnResize}}{{end}}
+			cnResized,
 		),
 	)
 
 	f.Func().Params(sysPtr).Id("ComponentWillResize").Params(jen.Id("cflag").Qual(ecspkg, "Flag")).Block(
 		jen.If(jen.Id("s").Dot("resizematch").Call(jen.Id("cflag"))).Block(
-			// {{if .Vars.OnWillResize}}{{.Vars.OnWillResize}}{{end}}
+			cnWillResize,
 			jen.Id("s").Dot("view").Dot("clearpointers").Call(),
 		),
 	)
@@ -231,13 +252,18 @@ func System(f *jen.File, def SystemDef) {
 		jen.Return(jen.Lit(def.Priority)),
 	)
 
+	onSetup := jen.Empty()
+	if def.OnSetup != "" {
+		onSetup = jen.Id("s").Dot(def.OnSetup).Call(jen.Id("w"))
+	}
+
 	f.Func().Params(sysPtr).Id("Setup").Params(jen.Id("w").Qual(ecspkg, "World")).Block(
 		jen.If(jen.Id("s").Dot("initialized")).Block(jen.Panic(jen.Lit(fmt.Sprintf("%s called Setup() more than once", def.Name)))),
 		jen.Id("s").Dot("view").Op("=").Id("new"+ids.view).Call(jen.Id("w")),
 		jen.Id("s").Dot("world").Op("=").Id("w"),
 		jen.Id("s").Dot("BaseSystem").Dot("Enable").Call(),
 		jen.Id("s").Dot("initialized").Op("=").Lit(true),
-		// {{if .Vars.Setup}}{{.Vars.Setup}}{{end}}
+		onSetup,
 	)
 
 	// {{if not .SkipRegister}}

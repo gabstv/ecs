@@ -1,192 +1,320 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"bufio"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
+	"strconv"
 	"strings"
-	"text/template"
 
-	"github.com/gabstv/ecs/v2/rx"
-	"github.com/urfave/cli"
+	"github.com/dave/jennifer/jen"
+	"github.com/gabstv/ecs/v2/gen"
+
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
 	app := cli.NewApp()
 
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "name, n",
-			Usage: "Template: {{.Name}}",
+		&cli.StringFlag{
+			Name: "go-package",
+			EnvVars: []string{
+				"GOPACKAGE",
+			},
 		},
-		cli.StringFlag{
-			Name:   "package, p",
-			Usage:  "Package: {{.Package}}",
-			EnvVar: "GOPACKAGE",
+		&cli.StringFlag{
+			Name:    "go-file",
+			EnvVars: []string{"GOFILE"},
 		},
-		cli.StringSliceFlag{
-			Name:  "template, t",
-			Usage: "Template file(s) to use",
-		},
-		cli.BoolFlag{
-			Name: "async",
-		},
-		cli.BoolFlag{
-			Name: "skip-register",
-		},
-		cli.StringSliceFlag{
-			Name: "vars",
-		},
-		cli.StringFlag{
-			Name:   "output, o",
-			EnvVar: "GOFILE",
-		},
-		cli.StringSliceFlag{
-			Name: "components",
-		},
-		cli.StringFlag{
-			Name:  "split",
-			Value: ";",
-		},
-		cli.BoolFlag{
-			Name: "system-tpl",
-		},
-		cli.BoolFlag{
-			Name: "component-tpl",
-		},
-		cli.StringSliceFlag{
-			Name: "members",
-		},
-		cli.StringSliceFlag{
-			Name:  "go-import",
-			Usage: "Import Go package",
+		&cli.StringFlag{
+			Name:    "out",
+			EnvVars: []string{"OUTPUT"},
+			Aliases: []string{"o", "output"},
 		},
 	}
+
 	app.Action = run
-	if err := app.Run(os.Args); err != nil {
-		println(err.Error())
-		os.Exit(1)
+
+	app.Run(os.Args)
+}
+
+type commentContext struct {
+	isECS         bool
+	isComponent   bool
+	isSystem      bool
+	isAsync       bool
+	name          string
+	uuid          string
+	componentsraw []string
+	members       []gen.SystemMember
+	onSetup       string
+
+	onEntityAdded         string
+	onEntityRemoved       string
+	onComponentWillResize string
+	onComponentResized    string
+
+	onAdd        string
+	onRemove     string
+	onWillRemove string
+	onWillResize string
+	onResized    string
+
+	noInit bool
+
+	initialCap int
+	priority   int64
+
+	sysAddRemoveFn *gen.SystemMatchFn
+	sysResizeFn    *gen.SystemMatchFn
+}
+
+func doCommentGroup(ctx *commentContext, g *ast.CommentGroup) {
+	for _, line := range strings.Split(g.Text(), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "ecs:") {
+			ctx.isECS = true
+			if line[4:] == "component" {
+				ctx.isComponent = true
+			} else if line[4:] == "system" {
+				ctx.isSystem = true
+			}
+		}
+		if strings.HasPrefix(line, "name:") {
+			ctx.name = strings.TrimSpace(line[5:])
+		}
+		if strings.HasPrefix(line, "uuid:") {
+			ctx.uuid = strings.TrimSpace(line[5:])
+		}
+		if strings.HasPrefix(line, "components:") {
+			ctx.componentsraw = strings.Split(strings.TrimSpace(line[11:]), ",")
+			for i, v := range ctx.componentsraw {
+				ctx.componentsraw[i] = strings.TrimSpace(v)
+			}
+		}
+		if strings.HasPrefix(line, "async:") {
+			ctx.isAsync, _ = strconv.ParseBool(strings.TrimSpace(line[6:]))
+		}
+		if strings.HasPrefix(line, "member:") {
+			memberdecl := strings.Split(strings.TrimSpace(line[7:]), " ")
+			m := gen.SystemMember{
+				VarName: memberdecl[0],
+			}
+			if len(memberdecl) > 1 {
+				mprefix, mtype := gen.ParsePrefixType(memberdecl[1])
+				m.VarType = mtype
+				m.VarPrefix = mprefix
+			}
+			if len(memberdecl) > 2 {
+				m.VarPackagePath = memberdecl[2]
+			}
+			if len(memberdecl) > 3 {
+				m.VarPackageAlias = memberdecl[3]
+			}
+			ctx.members = append(ctx.members, m)
+		}
+		if strings.HasPrefix(line, "setup:") {
+			ctx.onSetup = strings.TrimSpace(line[6:])
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "entityadded:", "entity added:", "entity-added:", "on-entity-added:", "entity_added:", "on-entity_added:"); ok {
+			ctx.onEntityAdded = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "entityremoved:", "entity removed:", "entity-removed:", "on-entity-removed:", "entity_removed:", "on-entity_removed:"); ok {
+			ctx.onEntityRemoved = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "componentwillresize:", "component will resize:", "component-will-resize:", "on-component-will-resize:", "component_will_resize:", "on-component-will-resize:"); ok {
+			ctx.onComponentWillResize = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "componentresized:", "component resized:", "component-resized:", "on-component-resized:", "component_resized:", "on-component-resized:"); ok {
+			ctx.onComponentResized = strings.TrimSpace(rest)
+		}
+
+		if rest, ok := gen.LinePrefixMatch(line, "add:", "on-add:", "on_add:"); ok {
+			ctx.onAdd = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "remove:", "on-remove:", "on_remove:"); ok {
+			ctx.onRemove = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "willremove:", "will-remove:", "will_remove:", "on-will-remove:", "on_will_remove:"); ok {
+			ctx.onWillRemove = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "willresize:", "will-resize:", "will_resize:", "on-will-resize:", "on_will_resize:"); ok {
+			ctx.onWillResize = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "resized:", "on-resized:", "on_resized:"); ok {
+			ctx.onResized = strings.TrimSpace(rest)
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "no-init:", "no_init:", "noinit:"); ok {
+			if v, _ := strconv.ParseBool(strings.TrimSpace(rest)); v {
+				ctx.noInit = true
+			}
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "init:"); ok {
+			if v, _ := strconv.ParseBool(strings.TrimSpace(rest)); !v {
+				ctx.noInit = true
+			}
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "cap:", "capacity:"); ok {
+			if v, _ := strconv.ParseInt(strings.TrimSpace(rest), 10, 64); v > 0 {
+				ctx.initialCap = int(v)
+			}
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "priority:"); ok {
+			if v, _ := strconv.ParseInt(strings.TrimSpace(rest), 10, 64); v > 0 {
+				ctx.priority = v
+			}
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "addremovematchfn:", "matchfn:", "add-remove-match-fn:", "match-fn:", "add_remove_match_fn:", "match_fn:"); ok {
+			ctx.sysAddRemoveFn = &gen.SystemMatchFn{
+				Name: rest,
+			}
+			if vs := strings.Split(rest, " "); len(vs) > 1 {
+				ctx.sysAddRemoveFn.Name = vs[0]
+				ctx.sysAddRemoveFn.PackagePath = vs[1]
+				if len(vs) > 2 {
+					ctx.sysAddRemoveFn.PackageAlias = vs[2]
+				}
+			}
+		}
+		if rest, ok := gen.LinePrefixMatch(line, "resizematchfn:", "resize-match-fn:", "resize_match_fn:"); ok {
+			ctx.sysResizeFn = &gen.SystemMatchFn{
+				Name: rest,
+			}
+			if vs := strings.Split(rest, " "); len(vs) > 1 {
+				ctx.sysResizeFn.Name = vs[0]
+				ctx.sysResizeFn.PackagePath = vs[1]
+				if len(vs) > 2 {
+					ctx.sysResizeFn.PackageAlias = vs[2]
+				}
+			}
+		}
 	}
 }
 
 func run(c *cli.Context) error {
-	name := c.String("name")
-	packagen := c.String("package")
-	templatep := c.StringSlice("template")
-	goimports := c.StringSlice("go-import")
-	async := c.Bool("async")
-	rawvars := c.StringSlice("vars")
-	rawviewitems := c.StringSlice("components")
-	rawmembers := c.StringSlice("members")
-	members := make([]NameType, 0)
-	vars := make(map[string]string)
-	viewitems := make([]map[string]string, 0)
-	for _, v := range rawvars {
-		vs := strings.SplitN(v, "=", 2)
-		if len(vs) == 2 {
-			vars[vs[0]] = vs[1]
-			println(vs[0])
-			println(vs[1])
-		} else {
-			vars[vs[0]] = "1"
-		}
+	println(c.String("go-package"))
+	packageName := c.String("go-package")
+	gofile := c.String("go-file")
+	out := c.String("out")
+
+	if out == "" {
+		out = gofile[:len(gofile)-2] + "ecs.go"
 	}
-	for _, v := range rawviewitems {
-		vsplit := strings.Split(v, c.String("split"))
-		item := make(map[string]string)
-		item["Name"] = vsplit[0]
-		if len(vsplit) > 1 {
-			if vsplit[1] != "" {
-				item["Type"] = vsplit[1]
-			} else {
-				item["Type"] = "*" + vsplit[0]
-			}
-		} else {
-			item["Type"] = "*" + vsplit[0]
-		}
-		if len(vsplit) > 2 {
-			item["Getter"] = vsplit[2]
-		} else {
-			item["Getter"] = fmt.Sprintf("Get%sComponent(v.world).Data(e)", vsplit[0])
-		}
-		viewitems = append(viewitems, item)
-	}
-	for _, v := range rawmembers {
-		vs := strings.SplitN(v, "=", 2)
-		if len(vs) == 2 {
-			members = append(members, NameType{
-				Name: vs[0],
-				Type: vs[1],
-			})
-		} else {
-			members = append(members, NameType{
-				Name: vs[0],
-			})
-		}
-	}
-	var tpl *template.Template
-	if len(templatep) > 0 {
-		var err error
-		tpl, err = template.ParseFiles(templatep...)
-		if err != nil {
-			return err
-		}
-	} else {
-		if c.Bool("system-tpl") {
-			f, err := rx.FS().Open("templates/system.tmpl")
-			if err != nil {
-				return err
-			}
-			d, _ := ioutil.ReadAll(f)
-			f.Close()
-			tpl, err = template.New("").Parse(string(d))
-			if err != nil {
-				return err
-			}
-		} else if c.Bool("component-tpl") {
-			f, err := rx.FS().Open("templates/component.tmpl")
-			if err != nil {
-				return err
-			}
-			d, _ := ioutil.ReadAll(f)
-			f.Close()
-			tpl, err = template.New("").Parse(string(d))
-			if err != nil {
-				return err
-			}
-		}
-	}
-	tpld := struct {
-		Package      string
-		Name         string
-		Async        bool
-		Vars         map[string]string
-		SkipRegister bool
-		ViewItems    []map[string]string
-		Members      []NameType
-		Imports      []string
-	}{
-		Package:      packagen,
-		Name:         name,
-		Async:        async,
-		Vars:         vars,
-		SkipRegister: c.Bool("skip-register"),
-		ViewItems:    viewitems,
-		Members:      members,
-		Imports:      goimports,
-	}
-	f, err := os.Create(c.String("output"))
+
+	println(gofile)
+	// println(c.Args().First())
+
+	fset := token.NewFileSet() // positions are relative to fset
+	f, err := parser.ParseFile(fset, gofile, nil, parser.ParseComments)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	if err := tpl.Execute(f, tpld); err != nil {
+	//spew.Dump(f.Comments)
+
+	jenf := jen.NewFile(packageName)
+	jenf.PackageComment("Code generated by ecs https://github.com/gabstv/ecs; DO NOT EDIT.")
+
+	for _, v := range f.Comments {
+		end := v.End()
+		ctx := &commentContext{}
+
+		doCommentGroup(ctx, v)
+
+		if ctx.isECS {
+
+			if ctx.uuid == "" {
+				//TODO: generate uuid on the fly
+			}
+
+			pos := fset.Position(end)
+			println(pos.String())
+			if ctx.name == "" {
+				lstr, err := readFileLine(gofile, pos.Line+1)
+				if err != nil {
+					// comp/sys cannot be generated (no name)
+				} else {
+					l1 := strings.TrimSpace(lstr[5:])
+					ctx.name = strings.Split(l1, " ")[0]
+					println("name: " + ctx.name)
+				}
+			}
+			println("")
+			if ctx.isComponent {
+				gen.Component(jenf, gen.ComponentDef{
+					UUID:          ctx.uuid,
+					StructName:    ctx.name,
+					ComponentName: ctx.name + "Component",
+					InitialCap:    ctx.initialCap,
+					Async:         ctx.isAsync,
+					NoInit:        ctx.noInit,
+					OnSetup:       ctx.onSetup,
+					OnWillResize:  ctx.onWillResize,
+					OnResized:     ctx.onResized,
+					OnAdd:         ctx.onAdd,
+					OnRemove:      ctx.onRemove,
+					OnWillRemove:  ctx.onWillRemove,
+				})
+			} else if ctx.isSystem {
+
+				items := make([]gen.SystemViewItem, 0, len(ctx.componentsraw))
+				for _, v := range ctx.componentsraw {
+					items = append(items, gen.SystemViewItem{
+						StructName: v,
+						// PackagePath: ,
+						// PackageAlias: ,
+						// ComponentGetter: ,
+						// FlagGetter: ,
+					})
+				}
+
+				gen.System(jenf, gen.SystemDef{
+					UUID:                  ctx.uuid,
+					Name:                  ctx.name,
+					Priority:              0,
+					Async:                 ctx.isAsync,
+					Components:            items,
+					Members:               ctx.members,
+					AddRemoveMatchFn:      ctx.sysAddRemoveFn,
+					ResizeMatchFn:         ctx.sysResizeFn,
+					OnSetup:               ctx.onSetup,
+					OnEntityAdded:         ctx.onEntityAdded,
+					OnEntityRemoved:       ctx.onEntityRemoved,
+					OnComponentWillResize: ctx.onComponentWillResize,
+					OnComponentResized:    ctx.onComponentResized,
+				})
+			}
+
+		}
+	}
+
+	if err := jenf.Save(out); err != nil {
+		println("ERRRRR: " + err.Error())
 		return err
 	}
+
 	return nil
 }
 
-type NameType struct {
-	Name string
-	Type string
+func readFileLine(file string, line int) (string, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	l := 0
+	for {
+		l++
+		sline, err := r.ReadString('\n')
+		if err != nil {
+			break
+		}
+		if l == line {
+			return strings.TrimSpace(sline), nil
+		}
+	}
+	return "", nil
 }
