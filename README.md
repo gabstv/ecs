@@ -44,7 +44,7 @@ type System interface {
 // Position component data
 //
 // ecs:component
-// uuid:3DF7F486-807D-4CE8-A187-37CED338137B
+// uuid:9F414CAD-4C1B-49B2-980E-0A61302AD5DE
 type Position struct {
 	X float64
 	Y float64
@@ -62,7 +62,7 @@ type Velocity struct {
 // Update MovementSystem matches
 //
 // ecs:system
-// uuid:E7D2FB64-2E98-4A14-8DE6-F088DE2AC3FB
+// uuid:43838027-AA12-4AD2-9F09-5DCBDA589779
 // name:MovementSystem
 // components: Position, Velocity
 func (s *MovementSystem) Update(dt float64) {
