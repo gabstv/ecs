@@ -1,77 +1,65 @@
 # Entity Component System
 
-A fast, code generate ECS (no more interface{}). Game Engine agnostic.
+A fast, zero reflection ECS (no more interface{}). Game Engine agnostic.
 
 [![GoDoc](https://godoc.org/github.com/gabstv/ecs?status.svg)](https://godoc.org/github.com/gabstv/ecs)
 
-`go get github.com/gabstv/ecs/v2/cmd/ecsgen`
+`go get github.com/gabstv/ecs/v3`
 
 Example:
 
 ```go
-package mycomponents
+package mygame
 
-import "github.com/gabstv/ecs/v2"
+import "github.com/gabstv/ecs/v3"
 
-
-type World struct {
-	ecs.World
-}
-
-func NewWorld() *World {
-	base := ecs.NewWorld()
-	ecs.RegisterWorldDefaults(base)
-	return &World{
-		World: base,
-	}
-}
-
-// Update all systems (sorted by priority)
-func (w *World) Update(dt float64) {
-	w.EachSystem(func(s ecs.System) bool {
-		s.(System).Update(dt)
-		return true
-	})
-}
-
-type System interface {
-	ecs.System
-	Update(dt float64)
-}
-
-// ecsgen will create the component+system logic:
-
-//go:generate go run ecsgen
-
-// Position component data
-//
-// ecs:component
-// uuid:9F414CAD-4C1B-49B2-980E-0A61302AD5DE
 type Position struct {
-	X float64
-	Y float64
+	X, Y float64
 }
 
-// Velocity component
-//
-// ecs:component
-// the uuid for this component is generated automatically
-type Velocity struct {
-	X       float64
-	Y       float64
+// Pkg is required for the component registry to avoid using reflection
+func (_ Position) Pkg() string {
+	// ecs uses this string to identify which component registry to use
+	return "main.Position" 
 }
 
-// Update MovementSystem matches
-//
-// ecs:system
-// uuid:43838027-AA12-4AD2-9F09-5DCBDA589779
-// name:MovementSystem
-// components: Position, Velocity
-func (s *MovementSystem) Update(dt float64) {
-	for _, v := range s.V().Matches() {
-		v.Position.X += v.Velocity.X
-		v.Position.Y += v.Velocity.Y
+type Speed struct {
+	X, Y float64
+}
+
+// Pkg is required for the component registry to avoid using reflection
+func (_ Speed) Pkg() string {
+	return "main.Speed"
+}
+
+func main() {
+	world := ecs.NewWorld()
+
+	// speed will be applied here
+	exampleSys := ecs.NewSystem2[Position, Speed](1, world)
+	exampleSys.Run = func(view *ecs.View2[Position, Speed]) {
+		// you can get a reference to global (costly) variables
+		// before running the view loop, like obtaining the delta time
+		view.Each(func(_ ecs.Entity, pos *Position, speed *Speed) {
+			pos.X += speed.X
+			pos.Y += speed.Y
+		})
 	}
+
+	e1 := world.NewEntity()
+
+	ecs.Set(world, e1, Position{
+		X: 10,
+		Y: 20,
+	})
+	ecs.Set(world, e1, Speed{
+		X: 1,
+		Y: .5,
+	})
+
+	world.Step() // run all systems once
 }
 
 ```
+
+For a more detailed example, check the `example` folder.
