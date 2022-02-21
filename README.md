@@ -2,6 +2,8 @@
 
 A fast, zero reflection ECS (no more interface{}). Game Engine agnostic.
 
+**Requires Go 1.18**
+
 [![GoDoc](https://godoc.org/github.com/gabstv/ecs?status.svg)](https://godoc.org/github.com/gabstv/ecs)
 
 `go get github.com/gabstv/ecs/v3`
