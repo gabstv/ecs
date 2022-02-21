@@ -3,7 +3,7 @@ module github.com/gabstv/ecs/v3
 go 1.18
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/gabstv/container v1.0.1
 	github.com/google/uuid v1.2.0
 	github.com/stretchr/testify v1.7.0
