@@ -5,27 +5,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/uuid"
 )
 
 type Entity uint64
-
-var encoderMutex sync.Mutex
-var encoderWorld *World
-
-var decoderMutex sync.Mutex
-var decoderWorld *World
-
-func setEncoderWorld(w *World) {
-	encoderWorld = w
-}
-
-func setDecoderWorld(w *World) {
-	decoderWorld = w
-}
 
 func (e Entity) MarshalBinary() ([]byte, error) {
 	id := encoderWorld.EntityUUID(e)
@@ -113,8 +98,8 @@ func (e Entities) MarshalBinary() ([]byte, error) {
 }
 
 func (e *Entities) UnmarshalBinary(data []byte) error {
-	//TODO: this
-	return nil
+	//TODO: implement (e *Entities) UnmarshalBinary(data []byte) error
+	return fmt.Errorf("not implemented")
 }
 
 func (e Entities) MarshalText() (text []byte, err error) {

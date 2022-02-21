@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/uuid"
@@ -20,7 +19,6 @@ var (
 
 type World struct {
 	lastEntity  Entity
-	entityMutex sync.Mutex
 	entities    []Entity
 	entityIDs   map[Entity]uuid.UUID // this is used when serializing/deserializing data
 	entityUUIDs map[uuid.UUID]Entity
@@ -96,26 +94,9 @@ func (w *World) EntityByUUID(id uuid.UUID) (Entity, bool) {
 }
 
 func (w *World) NewEntity() Entity {
-	w.entityMutex.Lock()
-	defer w.entityMutex.Unlock()
 	w.lastEntity++
 	w.entities = append(w.entities, w.lastEntity)
 	return w.lastEntity
-}
-
-func (w *World) NewEntities(count int) []Entity {
-	if count <= 0 {
-		return nil
-	}
-	w.entityMutex.Lock()
-	defer w.entityMutex.Unlock()
-	entts := make([]Entity, count)
-	for i := 0; i < count; i++ {
-		entts[i] = w.lastEntity + Entity(i+1)
-	}
-	w.lastEntity += Entity(count)
-	w.entities = append(w.entities, entts...)
-	return entts
 }
 
 var DefaultWorld = NewWorld()
@@ -174,43 +155,9 @@ func (w *World) SetEnabled(v bool) {
 
 // AllEntities returns all entities in the world
 func (w *World) AllEntities() []Entity {
-	w.entityMutex.Lock()
-	defer w.entityMutex.Unlock()
 	ecopy := make([]Entity, len(w.entities))
 	copy(ecopy, w.entities)
 	return ecopy
-}
-
-type SerializedWorld struct {
-	Entities       []SerializedEntity `toml:"entities"`
-	ComponentIndex ComponentIndex     `toml:"component_index"`
-	Enabled        bool               `toml:"enabled"`
-}
-
-type DeserializedWorld struct {
-	Entities       []DeserializedEntity `toml:"entities"`
-	ComponentIndex ComponentIndex       `toml:"component_index"`
-	Enabled        bool                 `toml:"enabled"`
-}
-
-type DeserializedEntity struct {
-	UUID       uuid.UUID                   `toml:"uuid"`
-	Components []DeserializedComponentData `toml:"components"`
-}
-
-type SerializedEntity struct {
-	UUID       uuid.UUID     `toml:"uuid"`
-	Components []interface{} `toml:"components"`
-}
-
-type DeserializedComponentData struct {
-	CI   int            `toml:"ci"` // component index
-	Data toml.Primitive `toml:"data"`
-}
-
-type SerializedComponentData struct {
-	CI   int         `toml:"ci"` // component index
-	Data interface{} `toml:"data"`
 }
 
 // MarshalTo marshals the world data to a writer
@@ -331,8 +278,4 @@ func (w *World) deserializeData(md toml.MetaData, dw *DeserializedWorld) error {
 	}
 	w.isloading = false
 	return nil
-}
-
-type Encoder interface {
-	Encode(interface{}) error
 }
