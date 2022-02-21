@@ -1,302 +1,338 @@
 package ecs
 
 import (
-	"errors"
+	"fmt"
+	"io"
 	"sort"
 	"sync"
+
+	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 )
 
-type world struct {
-	l          sync.RWMutex
-	lentity    Entity
-	lflag      uint8
-	components map[string]Component
-	systems    []System
-	syscache   map[string]System
-
-	entities []EntityFlag
-	key      [4]byte
-
-	ei    int64
-	evts  map[int64]*EventListener
-	evtfs map[EventType]map[int64]*EventListener
-
-	flaggroupsm sync.RWMutex
-	flaggroups  map[string]Flag
-
-	locker Locker
+type Printer interface {
+	Printf(fmt string, args ...interface{})
 }
 
-func (w *world) RegisterComponent(c Component) {
-	w.l.Lock()
-	defer w.l.Unlock()
-	if _, ok := w.components[c.UUID()]; ok {
-		panic("component " + c.Name() + " already registered (" + c.UUID() + ")")
-	}
-	w.components[c.UUID()] = c
-	c.Setup(w, NewFlag(w.lflag), w.key)
-	w.lflag++
+var (
+	SerializerLogger Printer
+)
+
+type World struct {
+	lastEntity  Entity
+	entityMutex sync.Mutex
+	entities    []Entity
+	entityIDs   map[Entity]uuid.UUID // this is used when serializing/deserializing data
+	entityUUIDs map[uuid.UUID]Entity
+	components  map[string]IComponentStore
+	systems     []ISystem
+	sysMap      map[int]ISystem
+	sysid       int
+	isloading   bool
+	enabled     bool
 }
 
-func (w *world) IsRegistered(id string) bool {
-	w.l.RLock()
-	defer w.l.RUnlock()
-	_, ok := w.components[id]
-	return ok
-}
-
-func (w *world) entityindex(e Entity) int {
-	i := sort.Search(len(w.entities), func(i int) bool { return w.entities[i].Entity >= e })
-	if i < len(w.entities) && w.entities[i].Entity == e {
-		return i
-	}
-	return -1
-}
-
-func (w *world) CFlag(e Entity) Flag {
-	w.l.RLock()
-	defer w.l.RUnlock()
-	i := w.entityindex(e)
-	if i == -1 {
-		return NewFlagRaw(0, 0, 0, 0)
-	}
-	return w.entities[i].Flag
-}
-
-func (w *world) C(id string) Component {
-	// All componets should already be loaded at this point,
-	// so no locking is done
-	//
-	// w.l.Lock()
-	// defer w.l.Unlock()
-	return w.components[id]
-}
-
-func (w *world) S(id string) System {
-	w.l.RLock()
-	defer w.l.RUnlock()
-	return w.syscache[id]
-}
-
-func (w *world) CAdded(e Entity, c Component, key [4]byte) {
-	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
-		panic("CAdded forbidden")
-	}
-	i := w.entityindex(e)
-	w.entities[i].Flag = w.entities[i].Flag.Or(c.Flag())
-	for _, sys := range w.systems {
-		sys.ComponentAdded(e, w.entities[i].Flag)
+func NewWorld() *World {
+	return &World{
+		lastEntity:  0,
+		entities:    make([]Entity, 0, 1024),
+		entityIDs:   make(map[Entity]uuid.UUID),
+		entityUUIDs: make(map[uuid.UUID]Entity),
+		components:  make(map[string]IComponentStore),
+		systems:     make([]ISystem, 0, 32),
+		sysMap:      make(map[int]ISystem),
+		enabled:     true,
 	}
 }
 
-func (w *world) CRemoved(e Entity, c Component, key [4]byte) {
-	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
-		panic("CRemoved forbidden")
-	}
-	i := w.entityindex(e)
-	w.entities[i].Flag = w.entities[i].Flag.Xor(c.Flag())
-	for _, sys := range w.systems {
-		sys.ComponentRemoved(e, w.entities[i].Flag)
-	}
+func (w *World) IsLoading() bool {
+	return w.isloading
 }
 
-func (w *world) CWillResize(c Component, key [4]byte) {
-	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
-		panic("CWillResize forbidden")
-	}
-	for _, sys := range w.systems {
-		sys.ComponentWillResize(c.Flag())
-	}
-}
-
-func (w *world) CResized(c Component, key [4]byte) {
-	if w.key[0] != key[0] || w.key[1] != key[1] || w.key[2] != key[2] || w.key[3] != key[3] {
-		panic("CResized forbidden")
-	}
-	for _, sys := range w.systems {
-		sys.ComponentResized(c.Flag())
-	}
-}
-
-func (w *world) NewEntity() Entity {
-	w.l.Lock()
-	w.lentity++
-	e := w.lentity
-	w.entities = append(w.entities, EntityFlag{
-		Entity: e,
-		Flag:   NewFlagRaw(0, 0, 0, 0),
+// EntityUUID returns the UUID of the entity
+// If the entity exists, but no UUID is set, a new UUID is generated and set
+func (w *World) EntityUUID(e Entity) uuid.UUID {
+	x := sort.Search(len(w.entities), func(i int) bool {
+		return w.entities[i] >= e
 	})
-	w.l.Unlock()
+	if x < len(w.entities) && w.entities[x] == e {
+		// x is present at data[i]
+		if uuid, ok := w.entityIDs[e]; ok {
+			return uuid
+		}
+		id, err := uuid.NewRandom()
+		if err != nil {
+			panic(err)
+		}
+		w.entityIDs[e] = id
+		w.entityUUIDs[id] = e
+		return id
+	}
+	// entity not found
+	return uuid.UUID{}
+}
+
+// getEntityByUUID is used by the deserializer to get the entity with the given UUID
+//
+// If the entity does not exist, a new entity is created and is assigned with the UUID
+func (w *World) getEntityByUUID(id uuid.UUID) Entity {
+	if e, ok := w.entityUUIDs[id]; ok {
+		return e
+	}
+	// create a new entity and set the uuid to it
+	e := w.NewEntity()
+	w.entityUUIDs[id] = e
+	w.entityIDs[e] = id
 	return e
 }
 
-func (w *world) RemoveEntity(e Entity) bool {
-	w.l.RLock()
-	i := w.entityindex(e)
-	if i == -1 {
-		w.l.RUnlock()
-		return false
+// EntityByUUID returns the entity with the given UUID
+// If the entity does not exist, an empty entity (0) is returned
+func (w *World) EntityByUUID(id uuid.UUID) (Entity, bool) {
+	if e, ok := w.entityUUIDs[id]; ok {
+		return e, true
 	}
-	f := w.entities[i].Flag
-	w.l.RUnlock()
-	for _, comp := range w.components {
-		if f.Contains(comp.Flag()) {
-			//TODO: optimize by ignoring CRemoved from this entity
-			comp.Remove(e)
-		}
-	}
-	w.l.Lock()
-	w.entities = w.entities[:i+copy(w.entities[i:], w.entities[i+1:])]
-	w.l.Unlock()
-	return true
+	return 0, false
 }
 
-// AddSystem returns an error if the system was already added
-func (w *world) AddSystem(s System) error {
-	w.l.Lock()
-	defer w.l.Unlock()
-	if _, ok := w.syscache[s.UUID()]; ok {
-		return errors.New("system already added (UUID: " + s.UUID() + " Name: " + s.Name() + ")")
+func (w *World) NewEntity() Entity {
+	w.entityMutex.Lock()
+	defer w.entityMutex.Unlock()
+	w.lastEntity++
+	w.entities = append(w.entities, w.lastEntity)
+	return w.lastEntity
+}
+
+func (w *World) NewEntities(count int) []Entity {
+	if count <= 0 {
+		return nil
 	}
-	w.syscache[s.UUID()] = s
-	w.systems = append(w.systems, s)
-	if len(w.systems) > 1 {
-		sort.SliceStable(w.systems, func(i, j int) bool {
-			return w.systems[i].Priority() > w.systems[j].Priority()
+	w.entityMutex.Lock()
+	defer w.entityMutex.Unlock()
+	entts := make([]Entity, count)
+	for i := 0; i < count; i++ {
+		entts[i] = w.lastEntity + Entity(i+1)
+	}
+	w.lastEntity += Entity(count)
+	w.entities = append(w.entities, entts...)
+	return entts
+}
+
+var DefaultWorld = NewWorld()
+
+func (w *World) addSystem(sys ISystem) int {
+	w.sysid++
+	w.systems = append(w.systems, sys)
+
+	sort.SliceStable(w.systems, func(i, j int) bool {
+		return w.systems[i].Priority() < w.systems[j].Priority()
+	})
+	w.sysMap[w.sysid] = sys
+
+	return w.sysid
+}
+
+func (w *World) RemoveSystem(id int) bool {
+	if sys, ok := w.sysMap[id]; ok {
+		delete(w.sysMap, id)
+		di := -1
+		for i, s := range w.systems {
+			if s == sys {
+				di = i
+				break
+			}
+		}
+		if di >= 0 {
+			w.systems = append(w.systems[:di], w.systems[di+1:]...)
+		}
+		return true
+	}
+	return false
+}
+
+func (w *World) Step() {
+	for _, sys := range w.systems {
+		sys.Execute()
+	}
+}
+
+func (w *World) StepF(flag int) {
+	for _, sys := range w.systems {
+		if sys.Flag()&flag != 0 {
+			sys.Execute()
+		}
+	}
+}
+
+func (w *World) Enabled() bool {
+	return w.enabled
+}
+
+func (w *World) SetEnabled(v bool) {
+	w.enabled = v
+}
+
+// AllEntities returns all entities in the world
+func (w *World) AllEntities() []Entity {
+	w.entityMutex.Lock()
+	defer w.entityMutex.Unlock()
+	ecopy := make([]Entity, len(w.entities))
+	copy(ecopy, w.entities)
+	return ecopy
+}
+
+type SerializedWorld struct {
+	Entities       []SerializedEntity `toml:"entities"`
+	ComponentIndex ComponentIndex     `toml:"component_index"`
+	Enabled        bool               `toml:"enabled"`
+}
+
+type DeserializedWorld struct {
+	Entities       []DeserializedEntity `toml:"entities"`
+	ComponentIndex ComponentIndex       `toml:"component_index"`
+	Enabled        bool                 `toml:"enabled"`
+}
+
+type DeserializedEntity struct {
+	UUID       uuid.UUID                   `toml:"uuid"`
+	Components []DeserializedComponentData `toml:"components"`
+}
+
+type SerializedEntity struct {
+	UUID       uuid.UUID     `toml:"uuid"`
+	Components []interface{} `toml:"components"`
+}
+
+type DeserializedComponentData struct {
+	CI   int            `toml:"ci"` // component index
+	Data toml.Primitive `toml:"data"`
+}
+
+type SerializedComponentData struct {
+	CI   int         `toml:"ci"` // component index
+	Data interface{} `toml:"data"`
+}
+
+// MarshalTo marshals the world data to a writer
+func (w *World) MarshalTo(dw io.Writer) error {
+	return w.serializeData(toml.NewEncoder(dw))
+}
+
+func (w *World) serializeData(me Encoder) error {
+	encoderMutex.Lock()
+	defer encoderMutex.Unlock()
+	setEncoderWorld(w)
+	defer setEncoderWorld(nil)
+	sw := SerializedWorld{
+		Entities: make([]SerializedEntity, 0, len(w.entities)),
+		Enabled:  w.enabled,
+	}
+	compIndex := make(map[string]int)
+	entt := make(map[Entity]*SerializedEntity)
+
+	type ctuple struct {
+		Name  string
+		Store IComponentStore
+	}
+	ctuples := make([]ctuple, 0, len(w.components))
+	for name, c := range w.components {
+		ctuples = append(ctuples, ctuple{Name: name, Store: c})
+	}
+	sort.SliceStable(ctuples, func(i, j int) bool {
+		return ctuples[i].Name < ctuples[j].Name
+	})
+
+	for indexm, ctuplev := range ctuples {
+		c := ctuplev.Store
+		ci := indexm + 1
+		compIndex[ctuplev.Name] = ci
+		c.dataExtract(func(e Entity, d interface{}) {
+			ent := entt[e]
+			if ent == nil {
+				ent = &SerializedEntity{
+					UUID:       w.EntityUUID(e),
+					Components: make([]interface{}, 0),
+				}
+			}
+			ent.Components = append(ent.Components, SerializedComponentData{
+				CI:   ci,
+				Data: d,
+			})
+			entt[e] = ent
 		})
 	}
-	s.Setup(w)
+	stb := make([]Sortable[Entity, *SerializedEntity], 0, len(entt))
+	for eid, ent := range entt {
+		stb = append(stb, Sortable[Entity, *SerializedEntity]{
+			Index: eid,
+			Data:  ent,
+		})
+	}
+	sort.Slice(stb, func(i, j int) bool {
+		return stb[i].Index < stb[j].Index
+	})
+	for _, s := range stb {
+		sw.Entities = append(sw.Entities, *s.Data)
+	}
+	sw.ComponentIndex = componentIndexFromMap(compIndex)
+	return me.Encode(sw)
+}
+
+func (w *World) UnmarshalFrom(dr io.Reader) error {
+	x := &DeserializedWorld{}
+	md, err := toml.NewDecoder(dr).Decode(x)
+	if err != nil {
+		return fmt.Errorf("failed to decode toml world data: %w", err)
+	}
+	return w.deserializeData(md, x)
+}
+
+func (w *World) UnmarshalFromMeta(md toml.MetaData, prim toml.Primitive) error {
+	x := &DeserializedWorld{}
+	err := md.PrimitiveDecode(prim, x)
+	if err != nil {
+		return fmt.Errorf("failed to decode toml world data: %w", err)
+	}
+	return w.deserializeData(md, x)
+}
+
+func (w *World) GetGenericComponent(registryName string) IComponentStore {
+	return w.components[registryName]
+}
+
+func (w *World) deserializeData(md toml.MetaData, dw *DeserializedWorld) error {
+	w.isloading = true
+	decoderMutex.Lock()
+	defer decoderMutex.Unlock()
+	setDecoderWorld(w)
+	defer setDecoderWorld(nil)
+	w.enabled = dw.Enabled
+	compoSmap := dw.ComponentIndex.ToMap()
+	compoImap := make(map[int]string)
+	for k, v := range compoSmap {
+		compoImap[v] = k
+	}
+	compos := make(map[int]IComponentStore)
+	// the components need to be registered beforehand
+	for i, v := range compoImap {
+		compos[i] = w.GetGenericComponent(v)
+	}
+	for _, ent := range dw.Entities {
+		e := w.getEntityByUUID(ent.UUID)
+		for _, c := range ent.Components {
+			if compos[c.CI] == nil {
+				if SerializerLogger != nil {
+					SerializerLogger.Printf("component [%d] %s not registered", c.CI, compoImap[c.CI])
+				}
+			} else {
+				compos[c.CI].dataImport(e, c.Data, md)
+			}
+		}
+	}
+	w.isloading = false
 	return nil
 }
 
-func (w *world) RemoveSystem(s System) {
-	w.l.Lock()
-	defer w.l.Unlock()
-	if _, ok := w.syscache[s.UUID()]; !ok {
-		return
-	}
-	delete(w.syscache, s.UUID())
-	i := -1
-	for k, v := range w.systems {
-		if v.UUID() == s.UUID() {
-			i = k
-			break
-		}
-	}
-	if i != -1 {
-		w.systems = w.systems[:i+copy(w.systems[i:], w.systems[i+1:])]
-		if len(w.systems) > 1 {
-			sort.SliceStable(w.systems, func(i, j int) bool {
-				return w.systems[i].Priority() > w.systems[j].Priority()
-			})
-		}
-	}
-}
-
-func (w *world) SetFlagGroup(name string, f Flag) {
-	w.flaggroupsm.Lock()
-	defer w.flaggroupsm.Unlock()
-	if w.flaggroups == nil {
-		w.flaggroups = make(map[string]Flag)
-	}
-	w.flaggroups[name] = f
-}
-
-func (w *world) FlagGroup(name string) Flag {
-	w.flaggroupsm.RLock()
-	defer w.flaggroupsm.RUnlock()
-	if w.flaggroups == nil {
-		return Flag{}
-	}
-	return w.flaggroups[name]
-}
-
-func (w *world) LGet(name string) interface{} {
-	return w.locker.Item(name)
-}
-
-func (w *world) LSet(name string, value interface{}) {
-	w.locker.SetItem(name, value)
-}
-
-func (w *world) Init() {
-	w.components = make(map[string]Component)
-	w.systems = make([]System, 0)
-	w.syscache = make(map[string]System)
-	w.entities = make([]EntityFlag, 0)
-	w.key = [4]byte{10, 227, 227, 9}
-	w.evts = make(map[int64]*EventListener)
-	w.evtfs = make(map[EventType]map[int64]*EventListener)
-	for _, t := range allevents {
-		w.evtfs[t] = make(map[int64]*EventListener)
-	}
-}
-
-func (w *world) EachSystem(fn func(s System) bool) {
-	w.l.RLock()
-	clone := make([]System, 0, len(w.systems))
-	for _, v := range w.systems {
-		if v.Enabled() {
-			clone = append(clone, v)
-		}
-	}
-	w.l.RUnlock()
-	for _, s := range clone {
-		if !fn(s) {
-			return
-		}
-	}
-}
-
-func (w *world) Dispatch(e Event) {
-	w.l.RLock()
-	m := w.evtfs[e.Type]
-	evs := make([]EventFn, 0, len(m))
-	for _, v := range m {
-		evs = append(evs, v.Fn)
-	}
-	w.l.RUnlock()
-	for _, v := range evs {
-		v(e)
-	}
-}
-
-func (w *world) Listen(mask EventType, fn EventFn) int64 {
-	w.l.Lock()
-	defer w.l.Unlock()
-	w.ei++
-	id := w.ei
-	x := &EventListener{
-		ID:   id,
-		Fn:   fn,
-		Mask: mask,
-	}
-	w.evts[id] = x
-	for _, t := range allevents {
-		if mask&t == t {
-			w.evtfs[t][id] = x
-		}
-	}
-	return id
-}
-
-func (w *world) RemoveListener(id int64) {
-	w.l.Lock()
-	defer w.l.Unlock()
-	l, ok := w.evts[id]
-	if !ok {
-		return
-	}
-	for _, t := range allevents {
-		if l.Mask&t == t {
-			delete(w.evtfs[t], l.ID)
-		}
-	}
-	delete(w.evts, l.ID)
-}
-
-func NewWorld() World {
-	w := &world{}
-	w.Init()
-	return w
+type Encoder interface {
+	Encode(interface{}) error
 }

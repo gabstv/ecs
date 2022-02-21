@@ -1,0 +1,46 @@
+enabled = true
+
+[[entities]]
+  uuid = "%s"
+
+  [[entities.components]]
+    ci = 1
+    [entities.components.data]
+      Xa = 0.1
+      Ya = 0.2
+      Za = 0.3
+
+  [[entities.components]]
+    ci = 2
+    [entities.components.data]
+      Delta = 0.0
+
+  [[entities.components]]
+    ci = 3
+    [entities.components.data]
+      X = 1.0
+      Y = 2.0
+      Z = 3.0
+
+  [[entities.components]]
+    ci = 4
+    [entities.components.data]
+      Xs = 4.0
+      Ys = 5.0
+      Zs = 6.0
+
+[[component_index]]
+  Name = "test.BenchAccel"
+  Index = 1
+
+[[component_index]]
+  Name = "test.BenchDeltaSpeed"
+  Index = 2
+
+[[component_index]]
+  Name = "test.BenchPos3"
+  Index = 3
+
+[[component_index]]
+  Name = "test.BenchSpeed3"
+  Index = 4

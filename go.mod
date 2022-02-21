@@ -1,13 +1,16 @@
-module github.com/gabstv/ecs/v2
+module github.com/gabstv/ecs/v3
 
-go 1.16
+go 1.18
 
 require (
-	github.com/dave/jennifer v1.4.1
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/BurntSushi/toml v0.4.1
+	github.com/gabstv/container v1.0.1
 	github.com/google/uuid v1.2.0
-	github.com/montanaflynn/broccoli/fs v0.0.0-20201214094408-6d02e9ece3b7
-	github.com/stretchr/testify v1.7.0 // indirect
-	github.com/urfave/cli v1.22.4
-	github.com/urfave/cli/v2 v2.3.0 // indirect
+	github.com/stretchr/testify v1.7.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )
