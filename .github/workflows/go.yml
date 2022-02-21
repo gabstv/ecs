@@ -11,7 +11,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [ubuntu-latest, macos-latest] # windows-latest not working with 1.18 atm
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
