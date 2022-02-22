@@ -65,7 +65,7 @@ func (s *ifaceSystemDataProvider) Data() interface{} {
 }
 
 func (s *ifaceSystemDataProvider) SetData(data interface{}) {
-
+	s.data = data
 }
 
 func newIfaceSystemDataProvider() *ifaceSystemDataProvider {
@@ -207,7 +207,7 @@ type GlobalSystemInfo[T ComponentType] struct {
 	ExecBuilder          func(w *World, s *System[T]) func(view *View[T])
 	EntityAddedBuilder   func(w *World, s *System[T]) func(e Entity)
 	EntityRemovedBuilder func(w *World, s *System[T]) func(e Entity)
-	InitialDataBuilder   func() interface{}
+	Initializer          func(w *World, s *System[T])
 	Finalizer            func(w *World, s *System[T])
 	WarmStart            bool
 }
@@ -219,7 +219,7 @@ type GlobalSystem2Info[T1, T2 ComponentType] struct {
 	ExecBuilder          func(w *World, s *System2[T1, T2]) func(view *View2[T1, T2])
 	EntityAddedBuilder   func(w *World, s *System2[T1, T2]) func(e Entity)
 	EntityRemovedBuilder func(w *World, s *System2[T1, T2]) func(e Entity)
-	InitialDataBuilder   func() interface{}
+	Initializer          func(w *World, s *System2[T1, T2])
 	Finalizer            func(w *World, s *System2[T1, T2])
 	WarmStart            bool
 }
@@ -231,7 +231,7 @@ type GlobalSystem3Info[T1, T2, T3 ComponentType] struct {
 	ExecBuilder          func(w *World, s *System3[T1, T2, T3]) func(view *View3[T1, T2, T3])
 	EntityAddedBuilder   func(w *World, s *System3[T1, T2, T3]) func(e Entity)
 	EntityRemovedBuilder func(w *World, s *System3[T1, T2, T3]) func(e Entity)
-	InitialDataBuilder   func() interface{}
+	Initializer          func(w *World, s *System3[T1, T2, T3])
 	Finalizer            func(w *World, s *System3[T1, T2, T3])
 	WarmStart            bool
 }
@@ -243,7 +243,7 @@ type GlobalSystem4Info[T1, T2, T3, T4 ComponentType] struct {
 	ExecBuilder          func(w *World, s *System4[T1, T2, T3, T4]) func(view *View4[T1, T2, T3, T4])
 	EntityAddedBuilder   func(w *World, s *System4[T1, T2, T3, T4]) func(e Entity)
 	EntityRemovedBuilder func(w *World, s *System4[T1, T2, T3, T4]) func(e Entity)
-	InitialDataBuilder   func() interface{}
+	Initializer          func(w *World, s *System4[T1, T2, T3, T4])
 	Finalizer            func(w *World, s *System4[T1, T2, T3, T4])
 	WarmStart            bool
 }
@@ -264,16 +264,16 @@ func RegisterGlobalSystem[T ComponentType](info GlobalSystemInfo[T]) {
 	defer globalSystems.lock.Unlock()
 	globalSystems.sysFactory = append(globalSystems.sysFactory, func(w *World) {
 		sys := NewSystem[T](info.ExecPriority, w)
+		sys.SetFlag(info.ExecFlag)
+		if info.Initializer != nil {
+			info.Initializer(w, sys)
+		}
 		sys.Run = info.ExecBuilder(w, sys)
 		if info.EntityAddedBuilder != nil {
 			sys.EntityAdded = info.EntityAddedBuilder(w, sys)
 		}
 		if info.EntityRemovedBuilder != nil {
 			sys.EntityRemoved = info.EntityRemovedBuilder(w, sys)
-		}
-		sys.SetFlag(info.ExecFlag)
-		if info.InitialDataBuilder != nil {
-			sys.SetData(info.InitialDataBuilder())
 		}
 		runtime.SetFinalizer(sys, func(s *System[T]) {
 			runtime.SetFinalizer(s, nil)
@@ -296,16 +296,16 @@ func RegisterGlobalSystem2[T1, T2 ComponentType](info GlobalSystem2Info[T1, T2])
 	defer globalSystems.lock.Unlock()
 	globalSystems.sysFactory = append(globalSystems.sysFactory, func(w *World) {
 		sys := NewSystem2[T1, T2](info.ExecPriority, w)
+		sys.SetFlag(info.ExecFlag)
+		if info.Initializer != nil {
+			info.Initializer(w, sys)
+		}
 		sys.Run = info.ExecBuilder(w, sys)
 		if info.EntityAddedBuilder != nil {
 			sys.EntityAdded = info.EntityAddedBuilder(w, sys)
 		}
 		if info.EntityRemovedBuilder != nil {
 			sys.EntityRemoved = info.EntityRemovedBuilder(w, sys)
-		}
-		sys.SetFlag(info.ExecFlag)
-		if info.InitialDataBuilder != nil {
-			sys.SetData(info.InitialDataBuilder())
 		}
 		runtime.SetFinalizer(sys, func(s *System2[T1, T2]) {
 			runtime.SetFinalizer(s, nil)
@@ -328,16 +328,16 @@ func RegisterGlobalSystem3[T1, T2, T3 ComponentType](info GlobalSystem3Info[T1, 
 	defer globalSystems.lock.Unlock()
 	globalSystems.sysFactory = append(globalSystems.sysFactory, func(w *World) {
 		sys := NewSystem3[T1, T2, T3](info.ExecPriority, w)
+		sys.SetFlag(info.ExecFlag)
+		if info.Initializer != nil {
+			info.Initializer(w, sys)
+		}
 		sys.Run = info.ExecBuilder(w, sys)
 		if info.EntityAddedBuilder != nil {
 			sys.EntityAdded = info.EntityAddedBuilder(w, sys)
 		}
 		if info.EntityRemovedBuilder != nil {
 			sys.EntityRemoved = info.EntityRemovedBuilder(w, sys)
-		}
-		sys.SetFlag(info.ExecFlag)
-		if info.InitialDataBuilder != nil {
-			sys.SetData(info.InitialDataBuilder())
 		}
 		runtime.SetFinalizer(sys, func(s *System3[T1, T2, T3]) {
 			runtime.SetFinalizer(s, nil)
@@ -360,16 +360,16 @@ func RegisterGlobalSystem4[T1, T2, T3, T4 ComponentType](info GlobalSystem4Info[
 	defer globalSystems.lock.Unlock()
 	globalSystems.sysFactory = append(globalSystems.sysFactory, func(w *World) {
 		sys := NewSystem4[T1, T2, T3, T4](info.ExecPriority, w)
+		sys.SetFlag(info.ExecFlag)
+		if info.Initializer != nil {
+			info.Initializer(w, sys)
+		}
 		sys.Run = info.ExecBuilder(w, sys)
 		if info.EntityAddedBuilder != nil {
 			sys.EntityAdded = info.EntityAddedBuilder(w, sys)
 		}
 		if info.EntityRemovedBuilder != nil {
 			sys.EntityRemoved = info.EntityRemovedBuilder(w, sys)
-		}
-		sys.SetFlag(info.ExecFlag)
-		if info.InitialDataBuilder != nil {
-			sys.SetData(info.InitialDataBuilder())
 		}
 		runtime.SetFinalizer(sys, func(s *System4[T1, T2, T3, T4]) {
 			runtime.SetFinalizer(s, nil)
