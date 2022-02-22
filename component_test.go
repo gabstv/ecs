@@ -80,7 +80,7 @@ func TestComponents(t *testing.T) {
 	if r1.Value != 0 {
 		t.Errorf("Get[Rotation] of e1.Value should fail")
 	}
-	if !Remove[Rotation](w, e0) {
+	if !RemoveComponent[Rotation](w, e0) {
 		t.Errorf("Remove[Rotation] of e0 failed")
 	}
 	ok0 = Contains[Rotation](w, e0)

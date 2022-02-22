@@ -9,14 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Printer interface {
-	Printf(fmt string, args ...interface{})
-}
-
-var (
-	SerializerLogger Printer
-)
-
 type World struct {
 	lastEntity  Entity
 	entities    []Entity
@@ -28,19 +20,6 @@ type World struct {
 	sysid       int
 	isloading   bool
 	enabled     bool
-}
-
-func NewWorld() *World {
-	return &World{
-		lastEntity:  0,
-		entities:    make([]Entity, 0, 1024),
-		entityIDs:   make(map[Entity]uuid.UUID),
-		entityUUIDs: make(map[uuid.UUID]Entity),
-		components:  make(map[string]IComponentStore),
-		systems:     make([]ISystem, 0, 32),
-		sysMap:      make(map[int]ISystem),
-		enabled:     true,
-	}
 }
 
 func (w *World) IsLoading() bool {
@@ -99,18 +78,21 @@ func (w *World) NewEntity() Entity {
 	return w.lastEntity
 }
 
-var DefaultWorld = NewWorld()
-
-func (w *World) addSystem(sys ISystem) int {
-	w.sysid++
-	w.systems = append(w.systems, sys)
-
-	sort.SliceStable(w.systems, func(i, j int) bool {
-		return w.systems[i].Priority() < w.systems[j].Priority()
+// Remove removes an Entity. It tries to delete the entity from all the
+// component registries of this world.
+func (w *World) Remove(e Entity) bool {
+	x := sort.Search(len(w.entities), func(i int) bool {
+		return w.entities[i] >= e
 	})
-	w.sysMap[w.sysid] = sys
-
-	return w.sysid
+	if x >= len(w.entities) || w.entities[x] != e {
+		return false
+	}
+	// x is present at data[i]
+	for _, c := range w.components {
+		_ = c.Remove(e)
+	}
+	w.entities = append(w.entities[:x], w.entities[x+1:]...)
+	return true
 }
 
 func (w *World) RemoveSystem(id int) bool {
@@ -163,6 +145,73 @@ func (w *World) AllEntities() []Entity {
 // MarshalTo marshals the world data to a writer
 func (w *World) MarshalTo(dw io.Writer) error {
 	return w.serializeData(toml.NewEncoder(dw))
+}
+
+func (w *World) UnmarshalFrom(dr io.Reader) error {
+	x := &DeserializedWorld{}
+	md, err := toml.NewDecoder(dr).Decode(x)
+	if err != nil {
+		return fmt.Errorf("failed to decode toml world data: %w", err)
+	}
+	return w.deserializeData(md, x)
+}
+
+func (w *World) UnmarshalFromMeta(md toml.MetaData, prim toml.Primitive) error {
+	x := &DeserializedWorld{}
+	err := md.PrimitiveDecode(prim, x)
+	if err != nil {
+		return fmt.Errorf("failed to decode toml world data: %w", err)
+	}
+	return w.deserializeData(md, x)
+}
+
+func (w *World) GetGenericComponent(registryName string) IComponentStore {
+	return w.components[registryName]
+}
+
+func (w *World) addSystem(sys ISystem) int {
+	w.sysid++
+	w.systems = append(w.systems, sys)
+
+	sort.SliceStable(w.systems, func(i, j int) bool {
+		return w.systems[i].Priority() < w.systems[j].Priority()
+	})
+	w.sysMap[w.sysid] = sys
+
+	return w.sysid
+}
+
+func (w *World) deserializeData(md toml.MetaData, dw *DeserializedWorld) error {
+	w.isloading = true
+	decoderMutex.Lock()
+	defer decoderMutex.Unlock()
+	setDecoderWorld(w)
+	defer setDecoderWorld(nil)
+	w.enabled = dw.Enabled
+	compoSmap := dw.ComponentIndex.ToMap()
+	compoImap := make(map[int]string)
+	for k, v := range compoSmap {
+		compoImap[v] = k
+	}
+	compos := make(map[int]IComponentStore)
+	// the components need to be registered beforehand
+	for i, v := range compoImap {
+		compos[i] = w.GetGenericComponent(v)
+	}
+	for _, ent := range dw.Entities {
+		e := w.getEntityByUUID(ent.UUID)
+		for _, c := range ent.Components {
+			if compos[c.CI] == nil {
+				if SerializerLogger != nil {
+					SerializerLogger.Printf("component [%d] %s not registered", c.CI, compoImap[c.CI])
+				}
+			} else {
+				compos[c.CI].dataImport(e, c.Data, md)
+			}
+		}
+	}
+	w.isloading = false
+	return nil
 }
 
 func (w *World) serializeData(me Encoder) error {
@@ -225,57 +274,23 @@ func (w *World) serializeData(me Encoder) error {
 	return me.Encode(sw)
 }
 
-func (w *World) UnmarshalFrom(dr io.Reader) error {
-	x := &DeserializedWorld{}
-	md, err := toml.NewDecoder(dr).Decode(x)
-	if err != nil {
-		return fmt.Errorf("failed to decode toml world data: %w", err)
+// NewWorld creates a new world. A world is not thread safe .I t shouldn't be
+// shared between threads.
+func NewWorld() *World {
+	return &World{
+		lastEntity:  0,
+		entities:    make([]Entity, 0, 1024),
+		entityIDs:   make(map[Entity]uuid.UUID),
+		entityUUIDs: make(map[uuid.UUID]Entity),
+		components:  make(map[string]IComponentStore),
+		systems:     make([]ISystem, 0, 32),
+		sysMap:      make(map[int]ISystem),
+		enabled:     true,
 	}
-	return w.deserializeData(md, x)
 }
 
-func (w *World) UnmarshalFromMeta(md toml.MetaData, prim toml.Primitive) error {
-	x := &DeserializedWorld{}
-	err := md.PrimitiveDecode(prim, x)
-	if err != nil {
-		return fmt.Errorf("failed to decode toml world data: %w", err)
-	}
-	return w.deserializeData(md, x)
-}
-
-func (w *World) GetGenericComponent(registryName string) IComponentStore {
-	return w.components[registryName]
-}
-
-func (w *World) deserializeData(md toml.MetaData, dw *DeserializedWorld) error {
-	w.isloading = true
-	decoderMutex.Lock()
-	defer decoderMutex.Unlock()
-	setDecoderWorld(w)
-	defer setDecoderWorld(nil)
-	w.enabled = dw.Enabled
-	compoSmap := dw.ComponentIndex.ToMap()
-	compoImap := make(map[int]string)
-	for k, v := range compoSmap {
-		compoImap[v] = k
-	}
-	compos := make(map[int]IComponentStore)
-	// the components need to be registered beforehand
-	for i, v := range compoImap {
-		compos[i] = w.GetGenericComponent(v)
-	}
-	for _, ent := range dw.Entities {
-		e := w.getEntityByUUID(ent.UUID)
-		for _, c := range ent.Components {
-			if compos[c.CI] == nil {
-				if SerializerLogger != nil {
-					SerializerLogger.Printf("component [%d] %s not registered", c.CI, compoImap[c.CI])
-				}
-			} else {
-				compos[c.CI].dataImport(e, c.Data, md)
-			}
-		}
-	}
-	w.isloading = false
-	return nil
+// Remove removes an entity from the world. It will also remove all components
+// attached to the entity. It returns false if the entity was not found.
+func Remove(w *World, e Entity) bool {
+	return w.Remove(e)
 }

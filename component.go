@@ -236,9 +236,9 @@ func GetComponentStore[T ComponentType](w *World) *ComponentStore[T] {
 	return c
 }
 
-// Remove removes the component data for the given entity.
-// It returns true if the component was found.
-func Remove[T ComponentType](w *World, e Entity) bool {
+// RemoveComponent removes the component data for the given entity.
+// It returns false if the component was not found.
+func RemoveComponent[T ComponentType](w *World, e Entity) bool {
 	c := GetComponentStore[T](w)
 	return c.Remove(e)
 }

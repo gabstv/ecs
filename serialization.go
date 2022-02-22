@@ -7,6 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type Printer interface {
+	Printf(fmt string, args ...interface{})
+}
+
+var (
+	SerializerLogger Printer
+)
+
 type SerializedWorld struct {
 	Entities       []SerializedEntity `toml:"entities"`
 	ComponentIndex ComponentIndex     `toml:"component_index"`

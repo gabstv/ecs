@@ -80,7 +80,7 @@ func main() {
 	})
 
 	// remove e2's Speed component
-	ecs.Remove[Speed](world, e2)
+	ecs.RemoveComponent[Speed](world, e2)
 
 	world.Step()
 	world.Step()

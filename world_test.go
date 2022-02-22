@@ -153,3 +153,35 @@ func TestUnmarshaler(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, 2.0, pos.Y)
 }
+
+func TestWorldRemoveEntity(t *testing.T) {
+	w := NewWorld()
+	e := w.NewEntity()
+	Set(w, e, BenchPos3{
+		X: 10.0,
+		Y: 10.1,
+		Z: 10.3,
+	})
+	Set(w, e, BenchSpeed3{
+		Xs: .1,
+		Ys: .2,
+		Zs: .3,
+	})
+	sys := NewSystem2[BenchPos3, BenchSpeed3](0, w)
+	sys.Run = func(view *View2[BenchPos3, BenchSpeed3]) {
+		view.Each(func(e Entity, p *BenchPos3, s *BenchSpeed3) {
+			p.X += s.Xs
+			p.Y += s.Ys
+			p.Z += s.Zs
+		})
+	}
+	w.Step()
+	Apply(w, e, func(p *BenchPos3) {
+		assert.Less(t, 10.09, p.X)
+		assert.Less(t, 10.29, p.Y)
+		assert.Less(t, 10.59, p.Z)
+	})
+	assert.True(t, Remove(w, e))
+	assert.False(t, Remove(w, e))
+	assert.False(t, Apply(w, e, func(p *BenchPos3) {}))
+}
