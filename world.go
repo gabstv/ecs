@@ -6,10 +6,12 @@ import (
 	"sort"
 
 	"github.com/BurntSushi/toml"
+	"github.com/gabstv/container"
 	"github.com/google/uuid"
 )
 
 type World struct {
+	data         container.Dictionary[string, interface{}]
 	lastEntity   Entity
 	entities     []Entity
 	entityIDs    map[Entity]uuid.UUID // this is used when serializing/deserializing data
@@ -21,6 +23,10 @@ type World struct {
 	sysid        int
 	isloading    bool
 	enabled      bool
+}
+
+func (w *World) Data() *container.Dictionary[string, interface{}] {
+	return &w.data
 }
 
 func (w *World) IsLoading() bool {
