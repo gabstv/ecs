@@ -275,8 +275,31 @@ func (w *World) serializeData(me Encoder) error {
 }
 
 // NewWorld creates a new world. A world is not thread safe .I t shouldn't be
-// shared between threads.
+// shared between threads. This function also adds the default systems to the
+// world. To create a new world without any systems, use NewEmptyWorld()
 func NewWorld() *World {
+	w := newWorld()
+	globalSystems.lock.Lock()
+	defer globalSystems.lock.Unlock()
+	for _, sf := range globalSystems.sysFactory {
+		sf(w)
+	}
+	return w
+}
+
+// NewEmptyWorld creates a new world. A world is not thread safe .I t shouldn't
+// be shared between threads. NewEmptyWorld creates a new world with no systems.
+func NewEmptyWorld() *World {
+	return newWorld()
+}
+
+// Remove removes an entity from the world. It will also remove all components
+// attached to the entity. It returns false if the entity was not found.
+func Remove(w *World, e Entity) bool {
+	return w.Remove(e)
+}
+
+func newWorld() *World {
 	return &World{
 		lastEntity:  0,
 		entities:    make([]Entity, 0, 1024),
@@ -287,10 +310,4 @@ func NewWorld() *World {
 		sysMap:      make(map[int]ISystem),
 		enabled:     true,
 	}
-}
-
-// Remove removes an entity from the world. It will also remove all components
-// attached to the entity. It returns false if the entity was not found.
-func Remove(w *World, e Entity) bool {
-	return w.Remove(e)
 }
