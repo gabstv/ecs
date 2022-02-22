@@ -10,16 +10,17 @@ import (
 )
 
 type World struct {
-	lastEntity  Entity
-	entities    []Entity
-	entityIDs   map[Entity]uuid.UUID // this is used when serializing/deserializing data
-	entityUUIDs map[uuid.UUID]Entity
-	components  map[string]IComponentStore
-	systems     []ISystem
-	sysMap      map[int]ISystem
-	sysid       int
-	isloading   bool
-	enabled     bool
+	lastEntity   Entity
+	entities     []Entity
+	entityIDs    map[Entity]uuid.UUID // this is used when serializing/deserializing data
+	entityUUIDs  map[uuid.UUID]Entity
+	eventManager *eventManager
+	components   map[string]IComponentStore
+	systems      []ISystem
+	sysMap       map[int]ISystem
+	sysid        int
+	isloading    bool
+	enabled      bool
 }
 
 func (w *World) IsLoading() bool {
@@ -301,13 +302,14 @@ func Remove(w *World, e Entity) bool {
 
 func newWorld() *World {
 	return &World{
-		lastEntity:  0,
-		entities:    make([]Entity, 0, 1024),
-		entityIDs:   make(map[Entity]uuid.UUID),
-		entityUUIDs: make(map[uuid.UUID]Entity),
-		components:  make(map[string]IComponentStore),
-		systems:     make([]ISystem, 0, 32),
-		sysMap:      make(map[int]ISystem),
-		enabled:     true,
+		lastEntity:   0,
+		entities:     make([]Entity, 0, 1024),
+		entityIDs:    make(map[Entity]uuid.UUID),
+		entityUUIDs:  make(map[uuid.UUID]Entity),
+		components:   make(map[string]IComponentStore),
+		systems:      make([]ISystem, 0, 32),
+		sysMap:       make(map[int]ISystem),
+		enabled:      true,
+		eventManager: newEventManager(),
 	}
 }
