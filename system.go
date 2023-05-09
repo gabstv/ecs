@@ -1,0 +1,38 @@
+package ecs
+
+type SystemID uint64
+
+type System func(*Commands)
+
+func AddStartupSystem(w World, system func(*Commands)) {
+	w.addStartupSystem(system)
+}
+
+func AddSystem(w World, system func(*Commands), opts ...AddSystemOptions) (SystemID, error) {
+	o := addSystemOptions{}
+	for _, v := range opts {
+		v(&o)
+	}
+	return w.addSystem(worldSystem{
+		SortPriority: o.SortPriority,
+		Value:        system,
+	})
+}
+
+type addSystemOptions struct {
+	SortPriority int
+}
+
+type AddSystemOptions func(*addSystemOptions)
+
+func WithSortPriority(priority int) AddSystemOptions {
+	return func(o *addSystemOptions) {
+		o.SortPriority = priority
+	}
+}
+
+type worldSystem struct {
+	ID           SystemID
+	SortPriority int
+	Value        System
+}
