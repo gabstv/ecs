@@ -43,6 +43,8 @@ func main() {
 		_, pos := q.Item()
 		fmt.Println(pos)
 	}
+	props := ecs.GetResource[GlobalProps](world)
+	fmt.Println("TotalPosVelChanged:", props.TotalPosVelChanged)
 }
 
 type Position struct {
@@ -64,31 +66,22 @@ func (Velocity) ComponentUUID() string {
 }
 
 type GlobalProps struct {
-	ecs.Resource
 	TotalPosVelChanged int
 }
 
-// implement ecs.Resource interface
-func (GlobalProps) ResourceUUID() string {
-	return "9e1ba9f4-6211-4b79-b02a-41aaec79a10c"
-}
-
 func moveAll(commands *ecs.Commands) {
-	// props.TotalPosVelChanged = 0
-	// for posVelQuery.Next() {
-	// 	_, pos, vel := posVelQuery.Item()
-	// 	pos.X += vel.X
-	// 	pos.Y += vel.Y
-	// 	props.TotalPosVelChanged++
-	// }
+	props := ecs.GetResource[GlobalProps](commands.World())
+	props.TotalPosVelChanged = 0
 	q := ecs.Q2[Position, Velocity](commands.World())
 	for q.Next() {
 		_, pos, vel := q.Item()
 		pos.X += vel.X
 		pos.Y += vel.Y
+		props.TotalPosVelChanged++
 	}
 }
 
 func setup(commands *ecs.Commands) {
+	ecs.InitResource[GlobalProps](commands.World())
 	ecs.Spawn2(commands, Position{X: 5, Y: 10}, Velocity{X: 1, Y: 2})
 }

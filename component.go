@@ -17,11 +17,11 @@ type componentStore[T Component] struct {
 }
 
 type componentStorage[T Component] struct {
-	needsSorting bool
-	zeroValue    T
-	zeroType     reflect.Type
-	mask         U256
-	Items        []componentStore[T]
+	// needsSorting bool //TODO: remove this when proven unecessary
+	zeroValue T
+	zeroType  reflect.Type
+	mask      U256
+	Items     []componentStore[T]
 }
 
 func (s componentStorage[T]) ComponentType() reflect.Type {

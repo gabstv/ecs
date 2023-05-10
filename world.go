@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -22,6 +23,8 @@ type World interface {
 	newComponentMask() U256
 	newEntity() Entity
 	removeEntity(Entity)
+	setResource(TypeMapKey, any)
+	getResource(TypeMapKey) any
 }
 
 type worldImpl struct {
@@ -34,6 +37,7 @@ type worldImpl struct {
 	systems           []worldSystem
 	startupSystems    []System
 	queries           map[TypeTape]any
+	resources         map[TypeMapKey]any
 
 	lastCommands *Commands
 
@@ -61,6 +65,7 @@ func NewWorld() World {
 		components:      make([]worldComponentStorage, 0, 256),
 		componentsIndex: make(map[TypeMapKey]int),
 		queries:         make(map[TypeTape]any),
+		resources:       make(map[TypeMapKey]any),
 		systems:         make([]worldSystem, 0, 1024),
 		startupSystems:  make([]System, 0, 256),
 	}
@@ -189,6 +194,24 @@ func (w *worldImpl) removeEntity(e Entity) {
 			v.removeEntity(e)
 		}
 		w.entities[index].ComponentMap = uint256.Zero()
+	}
+}
+
+func (w *worldImpl) getResource(k TypeMapKey) any {
+	if r, ok := w.resources[k]; ok {
+		return r
+	}
+	return nil
+}
+
+func (w *worldImpl) setResource(k TypeMapKey, r any) {
+	if _, ok := w.resources[k]; ok {
+		kv := reflect.Value(k)
+		panic(fmt.Sprintf("resource already set %v", kv.Type().String()))
+	}
+	w.resources[k] = r
+	if dr, ok := r.(WorldIniter); ok {
+		dr.Init(w)
 	}
 }
 
