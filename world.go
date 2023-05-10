@@ -10,6 +10,9 @@ import (
 )
 
 type World interface {
+	// ShallowCopy will return a new world that shares the same entities, components and resources, but
+	// not the same systems. This is useful to separate logic from rendering, for example.
+	ShallowCopy() World
 	Step()
 
 	addComponentStorage(cs worldComponentStorage)
@@ -42,6 +45,14 @@ type worldImpl struct {
 	lastCommands *Context
 
 	entitiesNeedSorting bool
+}
+
+func (w *worldImpl) ShallowCopy() World {
+	return &worldShallowCopy{
+		parent:         w,
+		systems:        make([]worldSystem, 0, 32),
+		startupSystems: make([]System, 0, 16),
+	}
 }
 
 func (w *worldImpl) Step() {
@@ -247,4 +258,102 @@ func (w *worldImpl) commit() {
 		})
 		w.entitiesNeedSorting = false
 	}
+}
+
+/// // //
+
+type worldShallowCopy struct {
+	parent *worldImpl
+
+	lastSystemID   uint64
+	systems        []worldSystem
+	startupSystems []System
+}
+
+func (w *worldShallowCopy) ShallowCopy() World {
+	return &worldShallowCopy{
+		parent:         w.parent,
+		systems:        make([]worldSystem, 0, 32),
+		startupSystems: make([]System, 0, 16),
+	}
+}
+
+func (w *worldShallowCopy) Step() {
+	pw := w.parent
+	commands := w.parent.getCommands()
+	commands.world = w
+	defer func() {
+		commands.world = pw
+	}()
+	for _, v := range w.startupSystems {
+		v(commands)
+		commands.run()
+		w.parent.clearCommands()
+	}
+	w.startupSystems = w.startupSystems[:0]
+	for _, v := range w.systems {
+		v.Value(commands)
+		commands.run()
+		w.parent.clearCommands()
+	}
+	w.parent.commit()
+}
+
+func (w *worldShallowCopy) addComponentStorage(cs worldComponentStorage) {
+	w.parent.addComponentStorage(cs)
+}
+
+func (w *worldShallowCopy) addSystem(sys worldSystem) (SystemID, error) {
+	w.lastSystemID++
+	sys.ID = SystemID(w.lastSystemID)
+	w.systems = append(w.systems, sys)
+	if len(w.systems) == 1 {
+		return sys.ID, nil
+	}
+	if w.systems[len(w.systems)-1].SortPriority >= w.systems[len(w.systems)-2].SortPriority {
+		return sys.ID, nil
+	}
+	// sort
+	sort.Slice(w.systems, func(i, j int) bool {
+		if w.systems[i].SortPriority == w.systems[j].SortPriority {
+			return w.systems[i].ID < w.systems[j].ID
+		}
+		return w.systems[i].SortPriority < w.systems[j].SortPriority
+	})
+	return sys.ID, nil
+}
+
+func (w *worldShallowCopy) addStartupSystem(sys System) {
+	w.startupSystems = append(w.startupSystems, sys)
+}
+
+func (w *worldShallowCopy) getCommands() *Context {
+	return w.parent.getCommands()
+}
+
+func (w *worldShallowCopy) getComponentStorage(t reflect.Type) worldComponentStorage {
+	return w.parent.getComponentStorage(t)
+}
+
+func (w *worldShallowCopy) getFatEntity(e Entity) *fatEntity {
+	return w.parent.getFatEntity(e)
+}
+
+func (w *worldShallowCopy) getQuery(tt TypeTape) any {
+	return w.parent.getQuery(tt)
+}
+func (w *worldShallowCopy) newComponentMask() U256 {
+	return w.parent.newComponentMask()
+}
+func (w *worldShallowCopy) newEntity() Entity {
+	return w.parent.newEntity()
+}
+func (w *worldShallowCopy) removeEntity(e Entity) {
+	w.parent.removeEntity(e)
+}
+func (w *worldShallowCopy) setResource(k TypeMapKey, r any) {
+	w.parent.setResource(k, r)
+}
+func (w *worldShallowCopy) getResource(k TypeMapKey) any {
+	return w.parent.getResource(k)
 }
