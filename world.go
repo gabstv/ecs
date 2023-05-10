@@ -15,7 +15,7 @@ type World interface {
 	addComponentStorage(cs worldComponentStorage)
 	addSystem(sys worldSystem) (SystemID, error)
 	addStartupSystem(sys System)
-	getCommands() *Commands
+	getCommands() *Context
 	getComponentStorage(reflect.Type) worldComponentStorage
 	getFatEntity(Entity) *fatEntity
 	// getQuery may return nil
@@ -39,7 +39,7 @@ type worldImpl struct {
 	queries           map[TypeTape]any
 	resources         map[TypeMapKey]any
 
-	lastCommands *Commands
+	lastCommands *Context
 
 	entitiesNeedSorting bool
 }
@@ -110,11 +110,11 @@ func (w *worldImpl) addStartupSystem(sys System) {
 	w.startupSystems = append(w.startupSystems, sys)
 }
 
-func (w *worldImpl) getCommands() *Commands {
+func (w *worldImpl) getCommands() *Context {
 	if w.lastCommands != nil {
 		return w.lastCommands
 	}
-	w.lastCommands = &Commands{
+	w.lastCommands = &Context{
 		world: w,
 	}
 	return w.lastCommands
@@ -237,7 +237,7 @@ func (w *worldImpl) clearCommands() {
 	if w.lastCommands == nil {
 		return
 	}
-	w.lastCommands.list = w.lastCommands.list[:0]
+	w.lastCommands.commands = w.lastCommands.commands[:0]
 }
 
 func (w *worldImpl) commit() {

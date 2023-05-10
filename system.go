@@ -2,13 +2,13 @@ package ecs
 
 type SystemID uint64
 
-type System func(*Commands)
+type System func(*Context)
 
-func AddStartupSystem(w World, system func(*Commands)) {
+func AddStartupSystem(w World, system func(*Context)) {
 	w.addStartupSystem(system)
 }
 
-func AddSystem(w World, system func(*Commands), opts ...AddSystemOptions) (SystemID, error) {
+func AddSystem(w World, system func(*Context), opts ...AddSystemOptions) (SystemID, error) {
 	o := addSystemOptions{}
 	for _, v := range opts {
 		v(&o)

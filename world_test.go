@@ -27,7 +27,7 @@ func Benchmark10kEntitiesSimple(b *testing.B) {
 		X, Y, Z float64
 	}
 	w := NewWorld()
-	AddSystem(w, func(c *Commands) {
+	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c.World())
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
@@ -36,7 +36,7 @@ func Benchmark10kEntitiesSimple(b *testing.B) {
 			pos.Z += vel.Z
 		}
 	})
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		for i := 0; i < 10000; i++ {
 			Spawn2(c, Position{
 				X: rand.Float64(),
@@ -66,7 +66,7 @@ func Benchmark10kEntitiesSimple5050(b *testing.B) {
 		X, Y, Z float64
 	}
 	w := NewWorld()
-	AddSystem(w, func(c *Commands) {
+	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c.World())
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
@@ -75,7 +75,7 @@ func Benchmark10kEntitiesSimple5050(b *testing.B) {
 			pos.Z += vel.Z
 		}
 	})
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		for i := 0; i < 10000; i++ {
 			if i%3 == 0 {
 				Spawn2(c, Position{
@@ -119,7 +119,7 @@ func Benchmark100kEntitiesSimple(b *testing.B) {
 		X, Y, Z float64
 	}
 	w := NewWorld()
-	AddSystem(w, func(c *Commands) {
+	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c.World())
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
@@ -128,7 +128,7 @@ func Benchmark100kEntitiesSimple(b *testing.B) {
 			pos.Z += vel.Z
 		}
 	})
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		for i := 0; i < 100000; i++ {
 			Spawn2(c, Position{
 				X: rand.Float64(),
@@ -158,7 +158,7 @@ func Benchmark1MEntitiesSimple(b *testing.B) {
 		X, Y, Z float64
 	}
 	w := NewWorld()
-	AddSystem(w, func(c *Commands) {
+	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c.World())
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
@@ -167,7 +167,7 @@ func Benchmark1MEntitiesSimple(b *testing.B) {
 			pos.Z += vel.Z
 		}
 	})
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		for i := 0; i < 1000000; i++ {
 			Spawn2(c, Position{
 				X: rand.Float64(),
@@ -196,11 +196,11 @@ func TestRemoveEntity(t *testing.T) {
 		Degree float64
 	}
 	w := NewWorld()
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		Spawn2(c, Person{Name: "Bob"}, Education{Degree: 3.0})
 		Spawn2(c, Person{Name: "Alice"}, Education{Degree: 4.0})
 	})
-	AddSystem(w, func(c *Commands) {
+	AddSystem(w, func(c *Context) {
 		query := Q2[Person, Education](c.World())
 		for query.Next() {
 			entt, _, e := query.Item()
@@ -218,13 +218,13 @@ func TestRemoveEntity(t *testing.T) {
 		}
 	}
 	// add again
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		Spawn2(c, Person{Name: "Roomba"}, Education{Degree: 5.0})
 	})
 	w.Step()
 	roombaEnt := Entity(0)
 	// remove the person component
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		query := Q1[Person](c.World())
 		for query.Next() {
 			entt, p := query.Item()
@@ -243,7 +243,7 @@ func TestRemoveEntity(t *testing.T) {
 		}
 	}
 	// add roomba again
-	AddStartupSystem(w, func(c *Commands) {
+	AddStartupSystem(w, func(c *Context) {
 		qr := Q1[Education](c.World())
 		for qr.Next() {
 			entt, e := qr.Item()

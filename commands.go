@@ -1,74 +1,74 @@
 package ecs
 
-type Commands struct {
-	world World
-	list  []Command
+type Context struct {
+	world    World
+	commands []Command
 }
 
-func (c *Commands) World() World {
+func (c *Context) World() World {
 	return c.world
 }
 
-func Spawn[T Component](c *Commands, data T) {
-	c.list = append(c.list, newSpawnCommand(c.world, data))
+func Spawn[T Component](c *Context, data T) {
+	c.commands = append(c.commands, newSpawnCommand(c.world, data))
 }
 
-func Spawn2[T1, T2 Component](c *Commands, data1 T1, data2 T2) {
-	c.list = append(c.list, newSpawn2Command(c.world, data1, data2))
+func Spawn2[T1, T2 Component](c *Context, data1 T1, data2 T2) {
+	c.commands = append(c.commands, newSpawn2Command(c.world, data1, data2))
 }
 
-func Spawn3[T1, T2, T3 Component](c *Commands, data1 T1, data2 T2, data3 T3) {
-	c.list = append(c.list, newSpawn3Command(c.world, data1, data2, data3))
+func Spawn3[T1, T2, T3 Component](c *Context, data1 T1, data2 T2, data3 T3) {
+	c.commands = append(c.commands, newSpawn3Command(c.world, data1, data2, data3))
 }
 
-func Spawn4[T1, T2, T3, T4 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4) {
-	c.list = append(c.list, newSpawn4Command(c.world, data1, data2, data3, data4))
+func Spawn4[T1, T2, T3, T4 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4) {
+	c.commands = append(c.commands, newSpawn4Command(c.world, data1, data2, data3, data4))
 }
 
-func Spawn5[T1, T2, T3, T4, T5 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5) {
-	c.list = append(c.list, newSpawn5Command(c.world, data1, data2, data3, data4, data5))
+func Spawn5[T1, T2, T3, T4, T5 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5) {
+	c.commands = append(c.commands, newSpawn5Command(c.world, data1, data2, data3, data4, data5))
 }
 
-func Spawn6[T1, T2, T3, T4, T5, T6 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6) {
-	c.list = append(c.list, newSpawn6Command(c.world, data1, data2, data3, data4, data5, data6))
+func Spawn6[T1, T2, T3, T4, T5, T6 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6) {
+	c.commands = append(c.commands, newSpawn6Command(c.world, data1, data2, data3, data4, data5, data6))
 }
 
-func Spawn7[T1, T2, T3, T4, T5, T6, T7 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7) {
-	c.list = append(c.list, newSpawn7Command(c.world, data1, data2, data3, data4, data5, data6, data7))
+func Spawn7[T1, T2, T3, T4, T5, T6, T7 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7) {
+	c.commands = append(c.commands, newSpawn7Command(c.world, data1, data2, data3, data4, data5, data6, data7))
 }
 
-func Spawn8[T1, T2, T3, T4, T5, T6, T7, T8 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8) {
-	c.list = append(c.list, newSpawn8Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8))
+func Spawn8[T1, T2, T3, T4, T5, T6, T7, T8 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8) {
+	c.commands = append(c.commands, newSpawn8Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8))
 }
 
-func Spawn9[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9) {
-	c.list = append(c.list, newSpawn9Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9))
+func Spawn9[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9) {
+	c.commands = append(c.commands, newSpawn9Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9))
 }
 
-func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Commands, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10) {
-	c.list = append(c.list, newSpawn10Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9, data10))
+func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10) {
+	c.commands = append(c.commands, newSpawn10Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9, data10))
 }
 
-func RemoveEntity(c *Commands, e Entity) {
-	c.list = append(c.list, func() {
-		c.world.removeEntity(e)
+func RemoveEntity(ctx *Context, e Entity) {
+	ctx.commands = append(ctx.commands, func() {
+		ctx.world.removeEntity(e)
 	})
 }
 
-func RemoveComponent[T Component](c *Commands, e Entity) {
-	c.list = append(c.list, func() {
-		removeComponent[T](c.world, e)
+func RemoveComponent[T Component](ctx *Context, e Entity) {
+	ctx.commands = append(ctx.commands, func() {
+		removeComponent[T](ctx.world, e)
 	})
 }
 
-func AddComponent[T Component](c *Commands, e Entity, data T) {
-	c.list = append(c.list, func() {
-		addComponent(c.world, e, data)
+func AddComponent[T Component](ctx *Context, e Entity, data T) {
+	ctx.commands = append(ctx.commands, func() {
+		addComponent(ctx.world, e, data)
 	})
 }
 
-func (c *Commands) run() {
-	for _, cmd := range c.list {
+func (ctx *Context) run() {
+	for _, cmd := range ctx.commands {
 		cmd()
 	}
 	//TODO: reorganize entities (if needed) after all commands are executed
