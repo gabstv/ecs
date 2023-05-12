@@ -14,8 +14,9 @@ func AddSystem(w World, system func(*Context), opts ...AddSystemOptions) (System
 		v(&o)
 	}
 	return w.addSystem(worldSystem{
-		SortPriority: o.SortPriority,
-		Value:        system,
+		SortPriority:   o.SortPriority,
+		Value:          system,
+		LocalResources: make(map[TypeMapKey]any),
 	})
 }
 
@@ -32,7 +33,8 @@ func WithSortPriority(priority int) AddSystemOptions {
 }
 
 type worldSystem struct {
-	ID           SystemID
-	SortPriority int
-	Value        System
+	ID             SystemID
+	SortPriority   int
+	Value          System
+	LocalResources map[TypeMapKey]any
 }

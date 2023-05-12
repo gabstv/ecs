@@ -57,17 +57,22 @@ func (w *worldImpl) ShallowCopy() World {
 
 func (w *worldImpl) Step() {
 	commands := w.getCommands()
+	commands.currentSystem = nil
+	commands.isStartupSystem = true
 	for _, v := range w.startupSystems {
 		v(commands)
 		commands.run()
 		w.clearCommands()
 	}
 	w.startupSystems = w.startupSystems[:0]
-	for _, v := range w.systems {
+	commands.isStartupSystem = false
+	for i, v := range w.systems {
+		commands.currentSystem = &w.systems[i]
 		v.Value(commands)
 		commands.run()
 		w.clearCommands()
 	}
+	commands.currentSystem = nil
 	w.commit()
 }
 
