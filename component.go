@@ -7,7 +7,7 @@ import (
 )
 
 type Component interface {
-	comparable
+	any
 }
 
 type componentStore[T Component] struct {
