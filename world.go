@@ -64,6 +64,9 @@ func (w *worldImpl) ShallowCopy() World {
 }
 
 func (w *worldImpl) Step() {
+	for _, v := range w.events {
+		v.(genericEventStorage).step()
+	}
 	commands := w.getCommands()
 	commands.currentSystem = nil
 	commands.isStartupSystem = true
@@ -312,6 +315,9 @@ func (w *worldShallowCopy) ShallowCopy() World {
 }
 
 func (w *worldShallowCopy) Step() {
+	for _, v := range w.events {
+		v.(genericEventStorage).step()
+	}
 	pw := w.parent
 	commands := w.parent.getCommands()
 	commands.world = w
