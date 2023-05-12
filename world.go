@@ -33,6 +33,7 @@ type World interface {
 	removeEntity(Entity)
 	setResource(TypeMapKey, any)
 	getResource(TypeMapKey) any
+	getEvents() map[TypeMapKey]any
 }
 
 type worldImpl struct {
@@ -40,6 +41,7 @@ type worldImpl struct {
 	lastSystemID      uint64
 	lastComponentMask U256
 	entities          []fatEntity
+	events            map[TypeMapKey]any
 	components        []worldComponentStorage
 	componentsIndex   map[TypeMapKey]int // TypeHash here represents a single type
 	systems           []worldSystem
@@ -57,6 +59,7 @@ func (w *worldImpl) ShallowCopy() World {
 		parent:         w,
 		systems:        make([]worldSystem, 0, 32),
 		startupSystems: make([]System, 0, 16),
+		events:         make(map[TypeMapKey]any),
 	}
 }
 
@@ -92,6 +95,7 @@ func NewWorld() World {
 	return &worldImpl{
 		components:      make([]worldComponentStorage, 0, 256),
 		componentsIndex: make(map[TypeMapKey]int),
+		events:          make(map[TypeMapKey]any),
 		queries:         make(map[TypeTape]any),
 		resources:       make(map[TypeMapKey]any),
 		systems:         make([]worldSystem, 0, 1024),
@@ -173,6 +177,10 @@ func (w *worldImpl) getFatEntity(e Entity) *fatEntity {
 		return &w.entities[index]
 	}
 	return nil
+}
+
+func (w *worldImpl) getEvents() map[TypeMapKey]any {
+	return w.events
 }
 
 func (w *worldImpl) getQuery(tt TypeTape) any {
@@ -282,6 +290,7 @@ func (w *worldImpl) commit() {
 type worldShallowCopy struct {
 	parent *worldImpl
 
+	events         map[TypeMapKey]any
 	lastSystemID   uint64
 	systems        []worldSystem
 	startupSystems []System
@@ -357,6 +366,10 @@ func (w *worldShallowCopy) getCommands() *Context {
 
 func (w *worldShallowCopy) getComponentStorage(t reflect.Type) worldComponentStorage {
 	return w.parent.getComponentStorage(t)
+}
+
+func (w *worldShallowCopy) getEvents() map[TypeMapKey]any {
+	return w.events
 }
 
 func (w *worldShallowCopy) getFatEntity(e Entity) *fatEntity {
