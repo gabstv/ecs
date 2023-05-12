@@ -11,7 +11,9 @@ import (
 
 type World interface {
 	// Exec executes code immediately in the current world. This should be avoided, but it's useful
-	// for game engines  to setup things before a worrld.Step() call.
+	// for game engines  to setup things before a world.Step() call.
+	// The function passed to Exec will be executed as a startup system. Any call to LocalResource
+	// will panic.
 	Exec(func(*Context))
 	// ShallowCopy will return a new world that shares the same entities, components and resources, but
 	// not the same systems. This is useful to separate logic from rendering, for example.
