@@ -30,7 +30,9 @@ func LocalResource[T any](c *Context) *T {
 	return (c.currentSystem.LocalResources[tm].(*T))
 }
 
-func Spawn[T Component](c *Context, data T) {
+type EntityCommandCallback func(ctx *Context, e Entity)
+
+func Spawn[T Component](c *Context, data T, actions ...EntityCommandCallback) {
 	c.commands = append(c.commands, newSpawnCommand(c.world, data))
 }
 
@@ -71,99 +73,127 @@ func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Context, data
 }
 
 func RemoveEntity(ctx *Context, e Entity) {
-	ctx.commands = append(ctx.commands, func() {
+	ctx.commands = append(ctx.commands, func(ctx *Context) {
 		ctx.world.removeEntity(e)
 		//the component removed event is called inside the removeEntity function
 	})
 }
 
 func RemoveComponent[T Component](ctx *Context, e Entity) {
-	ctx.commands = append(ctx.commands, func() {
+	ctx.commands = append(ctx.commands, func(ctx *Context) {
 		removeComponent[T](ctx.world, e)
 	})
 }
 
-func AddComponent[T Component](ctx *Context, e Entity, data T) {
-	ctx.commands = append(ctx.commands, func() {
+func AddComponent[T Component](ctx *Context, e Entity, data T, actions ...EntityCommandCallback) {
+	ctx.commands = append(ctx.commands, func(ctx *Context) {
 		addComponent(ctx.world, e, data)
+		execSpawnCallbacks(ctx, e, actions...)
 	})
 }
 
 func (ctx *Context) run() {
 	for _, cmd := range ctx.commands {
-		cmd()
+		cmd(ctx)
 	}
 	//TODO: reorganize entities (if needed) after all commands are executed
 }
 
-type Command func()
+type Command func(parent *Context)
 
-func newSpawnCommand[T Component](w World, data T) Command {
-	return func() {
+func execSpawnCallbacks(parentctx *Context, e Entity, actions ...EntityCommandCallback) {
+	if len(actions) < 1 {
+		return
+	}
+	ctxchild := &Context{
+		world:           parentctx.world,
+		commands:        make([]Command, 0),
+		currentSystem:   parentctx.currentSystem,
+		isStartupSystem: parentctx.isStartupSystem,
+	}
+	for _, action := range actions {
+		action(ctxchild, e)
+	}
+	ctxchild.run()
+	ctxchild.commands = nil
+}
+
+func newSpawnCommand[T Component](w World, data T, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent(w, e, data)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn2Command[T1, T2 Component](w World, data1 T1, data2 T2) Command {
-	return func() {
+func newSpawn2Command[T1, T2 Component](w World, data1 T1, data2 T2, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent2(w, e, data1, data2)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn3Command[T1, T2, T3 Component](w World, data1 T1, data2 T2, data3 T3) Command {
-	return func() {
+func newSpawn3Command[T1, T2, T3 Component](w World, data1 T1, data2 T2, data3 T3, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent3(w, e, data1, data2, data3)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn4Command[T1, T2, T3, T4 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4) Command {
-	return func() {
+func newSpawn4Command[T1, T2, T3, T4 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent4(w, e, data1, data2, data3, data4)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn5Command[T1, T2, T3, T4, T5 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5) Command {
-	return func() {
+func newSpawn5Command[T1, T2, T3, T4, T5 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent5(w, e, data1, data2, data3, data4, data5)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn6Command[T1, T2, T3, T4, T5, T6 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6) Command {
-	return func() {
+func newSpawn6Command[T1, T2, T3, T4, T5, T6 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent6(w, e, data1, data2, data3, data4, data5, data6)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn7Command[T1, T2, T3, T4, T5, T6, T7 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7) Command {
-	return func() {
+func newSpawn7Command[T1, T2, T3, T4, T5, T6, T7 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent7(w, e, data1, data2, data3, data4, data5, data6, data7)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn8Command[T1, T2, T3, T4, T5, T6, T7, T8 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8) Command {
-	return func() {
+func newSpawn8Command[T1, T2, T3, T4, T5, T6, T7, T8 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent8(w, e, data1, data2, data3, data4, data5, data6, data7, data8)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn9Command[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9) Command {
-	return func() {
+func newSpawn9Command[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent9(w, e, data1, data2, data3, data4, data5, data6, data7, data8, data9)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }
 
-func newSpawn10Command[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10) Command {
-	return func() {
+func newSpawn10Command[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](w World, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10, actions ...EntityCommandCallback) Command {
+	return func(parent *Context) {
 		e := w.newEntity()
 		addComponent10(w, e, data1, data2, data3, data4, data5, data6, data7, data8, data9, data10)
+		execSpawnCallbacks(parent, e, actions...)
 	}
 }

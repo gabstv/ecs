@@ -109,6 +109,8 @@ func (w *worldImpl) Exec(fn func(*Context)) {
 	commands.currentSystem = nil
 	commands.isStartupSystem = true
 	fn(commands)
+	commands.run()
+	w.clearCommands()
 }
 
 func NewWorld() World {
@@ -332,6 +334,8 @@ func (w *worldShallowCopy) Exec(fn func(*Context)) {
 	commands.currentSystem = nil
 	commands.isStartupSystem = true
 	fn(commands)
+	commands.run()
+	w.parent.clearCommands()
 }
 
 func (w *worldShallowCopy) ShallowCopy() World {
