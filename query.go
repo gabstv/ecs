@@ -107,8 +107,8 @@ func getOrCreateQuery1[T1 Component](w World) Query1[T1] {
 	return q
 }
 
-func Q1[T1 Component](w World) Query1[T1] {
-	q := getOrCreateQuery1[T1](w)
+func Q1[T1 Component](ctx *Context) Query1[T1] {
+	q := getOrCreateQuery1[T1](ctx.world)
 	q.Reset()
 	return q
 }
@@ -205,8 +205,8 @@ func getOrCreateQuery2[T1, T2 Component](w World) Query2[T1, T2] {
 	return q
 }
 
-func Q2[T1, T2 Component](w World) Query2[T1, T2] {
-	q := getOrCreateQuery2[T1, T2](w)
+func Q2[T1, T2 Component](ctx *Context) Query2[T1, T2] {
+	q := getOrCreateQuery2[T1, T2](ctx.world)
 	q.Reset()
 	return q
 }
@@ -339,8 +339,8 @@ func getOrCreateQuery3[T1, T2, T3 Component](w World) Query3[T1, T2, T3] {
 	return q
 }
 
-func Q3[T1, T2, T3 Component](w World) Query3[T1, T2, T3] {
-	q := getOrCreateQuery3[T1, T2, T3](w)
+func Q3[T1, T2, T3 Component](ctx *Context) Query3[T1, T2, T3] {
+	q := getOrCreateQuery3[T1, T2, T3](ctx.world)
 	q.Reset()
 	return q
 }
@@ -480,8 +480,8 @@ func getOrCreateQuery4[T1, T2, T3, T4 Component](w World) Query4[T1, T2, T3, T4]
 	return q
 }
 
-func Q4[T1, T2, T3, T4 Component](w World) Query4[T1, T2, T3, T4] {
-	q := getOrCreateQuery4[T1, T2, T3, T4](w)
+func Q4[T1, T2, T3, T4 Component](ctx *Context) Query4[T1, T2, T3, T4] {
+	q := getOrCreateQuery4[T1, T2, T3, T4](ctx.world)
 	q.Reset()
 	return q
 }
@@ -649,8 +649,8 @@ func getOrCreateQuery5[T1, T2, T3, T4, T5 Component](w World) Query5[T1, T2, T3,
 	return q
 }
 
-func Q5[T1, T2, T3, T4, T5 Component](w World) Query5[T1, T2, T3, T4, T5] {
-	q := getOrCreateQuery5[T1, T2, T3, T4, T5](w)
+func Q5[T1, T2, T3, T4, T5 Component](ctx *Context) Query5[T1, T2, T3, T4, T5] {
+	q := getOrCreateQuery5[T1, T2, T3, T4, T5](ctx.world)
 	q.Reset()
 	return q
 }

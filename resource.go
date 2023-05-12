@@ -25,9 +25,10 @@ func InitResource[T any](w World) {
 	w.setResource(typeMapKeyOf(t), &zt)
 }
 
-func GetResource[T any](w World) *T {
+// Resource retrieves a previously registered resource.
+func Resource[T any](ctx *Context) *T {
 	var zt T
-	x := w.getResource(typeMapKeyOf(reflect.TypeOf(zt)))
+	x := ctx.world.getResource(typeMapKeyOf(reflect.TypeOf(zt)))
 	if x == nil {
 		return nil
 	}

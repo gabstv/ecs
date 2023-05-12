@@ -14,39 +14,46 @@ func main() {
 	ecs.AddStartupSystem(world, setup)
 	world.Step()
 	world.Step()
-	q := ecs.Q1[Position](world)
-	fmt.Println("Positions:")
-	for q.Next() {
-		_, pos := q.Item()
-		fmt.Println(pos)
-	}
-	ecs.AddStartupSystem(world, func(c *ecs.Context) {
-		ecs.Spawn2(c, Position{X: 500, Y: 1000}, Velocity{X: 100, Y: -100})
-		q := ecs.Q1[Position](c.World())
+	ecs.AddStartupSystem(world, func(ctx *ecs.Context) {
+		q := ecs.Q1[Position](ctx)
+		fmt.Println("Positions:")
+		for q.Next() {
+			_, pos := q.Item()
+			fmt.Println(pos)
+		}
+	})
+	ecs.AddStartupSystem(world, func(ctx *ecs.Context) {
+		ecs.Spawn2(ctx, Position{X: 500, Y: 1000}, Velocity{X: 100, Y: -100})
+		q := ecs.Q1[Position](ctx)
 		for q.Next() {
 			e, pos := q.Item()
 			fmt.Println(pos)
 			if pos.X == 7 {
-				ecs.RemoveComponent[Velocity](c, e)
+				ecs.RemoveComponent[Velocity](ctx, e)
 			}
 		}
 	})
 	world.Step()
-	q.Reset()
-	fmt.Println("Positions (second pass):")
-	for q.Next() {
-		_, pos := q.Item()
-		fmt.Println(pos)
-	}
+	ecs.AddStartupSystem(world, func(ctx *ecs.Context) {
+		q := ecs.Q1[Position](ctx)
+		fmt.Println("Positions (second pass):")
+		for q.Next() {
+			_, pos := q.Item()
+			fmt.Println(pos)
+		}
+	})
 	world.Step()
-	q.Reset()
-	fmt.Println("Positions (third pass):")
-	for q.Next() {
-		_, pos := q.Item()
-		fmt.Println(pos)
-	}
-	props := ecs.GetResource[GlobalProps](world)
-	fmt.Println("TotalPosVelChanged:", props.TotalPosVelChanged)
+	ecs.AddStartupSystem(world, func(ctx *ecs.Context) {
+		q := ecs.Q1[Position](ctx)
+		fmt.Println("Positions (third pass):")
+		for q.Next() {
+			_, pos := q.Item()
+			fmt.Println(pos)
+		}
+		props := ecs.Resource[GlobalProps](ctx)
+		fmt.Println("TotalPosVelChanged:", props.TotalPosVelChanged)
+	})
+	world.Step()
 }
 
 type Position struct {
@@ -62,9 +69,9 @@ type GlobalProps struct {
 }
 
 func moveAll(ctx *ecs.Context) {
-	props := ecs.GetResource[GlobalProps](ctx.World())
+	props := ecs.Resource[GlobalProps](ctx)
 	props.TotalPosVelChanged = 0
-	q := ecs.Q2[Position, Velocity](ctx.World())
+	q := ecs.Q2[Position, Velocity](ctx)
 	for q.Next() {
 		_, pos, vel := q.Item()
 		pos.X += vel.X

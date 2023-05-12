@@ -28,7 +28,7 @@ func Benchmark10kEntitiesSimple(b *testing.B) {
 	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
-		pvquery := Q2[Position, Velocity](c.World())
+		pvquery := Q2[Position, Velocity](c)
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
 			pos.X += vel.X
@@ -67,7 +67,7 @@ func Benchmark10kEntitiesSimple5050(b *testing.B) {
 	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
-		pvquery := Q2[Position, Velocity](c.World())
+		pvquery := Q2[Position, Velocity](c)
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
 			pos.X += vel.X
@@ -120,7 +120,7 @@ func Benchmark100kEntitiesSimple(b *testing.B) {
 	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
-		pvquery := Q2[Position, Velocity](c.World())
+		pvquery := Q2[Position, Velocity](c)
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
 			pos.X += vel.X
@@ -159,7 +159,7 @@ func Benchmark1MEntitiesSimple(b *testing.B) {
 	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
-		pvquery := Q2[Position, Velocity](c.World())
+		pvquery := Q2[Position, Velocity](c)
 		for pvquery.Next() {
 			_, pos, vel := pvquery.Item()
 			pos.X += vel.X
@@ -201,7 +201,7 @@ func TestRemoveEntity(t *testing.T) {
 		Spawn2(c, Person{Name: "Alice"}, Education{Degree: 4.0})
 	})
 	AddSystem(w, func(c *Context) {
-		query := Q2[Person, Education](c.World())
+		query := Q2[Person, Education](c)
 		for query.Next() {
 			entt, _, e := query.Item()
 			if e.Degree < 3.1 {
@@ -210,13 +210,15 @@ func TestRemoveEntity(t *testing.T) {
 		}
 	})
 	w.Step()
-	query := Q2[Person, Education](w)
-	for query.Next() {
-		_, p, _ := query.Item()
-		if p.Name == "Bob" {
-			t.Error("Bob should be removed")
+	AddStartupSystem(w, func(c *Context) {
+		query := Q2[Person, Education](c)
+		for query.Next() {
+			_, p, _ := query.Item()
+			if p.Name == "Bob" {
+				t.Error("Bob should be removed")
+			}
 		}
-	}
+	})
 	// add again
 	AddStartupSystem(w, func(c *Context) {
 		Spawn2(c, Person{Name: "Roomba"}, Education{Degree: 5.0})
@@ -225,7 +227,7 @@ func TestRemoveEntity(t *testing.T) {
 	roombaEnt := Entity(0)
 	// remove the person component
 	AddStartupSystem(w, func(c *Context) {
-		query := Q1[Person](c.World())
+		query := Q1[Person](c)
 		for query.Next() {
 			entt, p := query.Item()
 			if p.Name == "Roomba" {
@@ -235,16 +237,18 @@ func TestRemoveEntity(t *testing.T) {
 		}
 	})
 	w.Step()
-	query = Q2[Person, Education](w)
-	for query.Next() {
-		_, p, _ := query.Item()
-		if p.Name == "Roomba" {
-			t.Error("Roomba should be removed")
+	AddStartupSystem(w, func(c *Context) {
+		query := Q2[Person, Education](c)
+		for query.Next() {
+			_, p, _ := query.Item()
+			if p.Name == "Roomba" {
+				t.Error("Roomba should be removed")
+			}
 		}
-	}
+	})
 	// add roomba again
 	AddStartupSystem(w, func(c *Context) {
-		qr := Q1[Education](c.World())
+		qr := Q1[Education](c)
 		for qr.Next() {
 			entt, e := qr.Item()
 			if e.Degree == 5.0 {
@@ -253,17 +257,20 @@ func TestRemoveEntity(t *testing.T) {
 		}
 	})
 	w.Step()
-	query = Q2[Person, Education](w)
 	foundRoomba2 := false
-	for query.Next() {
-		entt, p, _ := query.Item()
-		if p.Name == "Roomba 2" {
-			foundRoomba2 = true
-			if entt != roombaEnt {
-				t.Error("Roomba 2 should be the same entity")
+	AddStartupSystem(w, func(c *Context) {
+		query := Q2[Person, Education](c)
+		for query.Next() {
+			entt, p, _ := query.Item()
+			if p.Name == "Roomba 2" {
+				foundRoomba2 = true
+				if entt != roombaEnt {
+					t.Error("Roomba 2 should be the same entity")
+				}
 			}
 		}
-	}
+	})
+	w.Step()
 	if !foundRoomba2 {
 		t.Error("Roomba 2 not found")
 	}
