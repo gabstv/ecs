@@ -80,3 +80,55 @@ func EventReader[T any](ctx *Context) EventReaderFunc[T] {
 
 // EventReaderFunc returns false if there are no more events to read.
 type EventReaderFunc[T any] func() (T, bool)
+
+type EntityComponentPair[T any] struct {
+	Entity Entity
+	// This is a copy of the component at the time of the event.
+	// If you absolutely need to get a pointer to the component, you can use
+
+	ComponentCopy T
+}
+
+func getComponentAddedEventsParent[T Component](w World) *eventStorage[EntityComponentPair[T]] {
+	var zt T
+	zk := typeMapKeyOf(reflect.TypeOf(zt))
+	m := w.getComponentAddedEvents()
+	vi := m[zk]
+	if vi == nil {
+		vv := &eventStorage[EntityComponentPair[T]]{
+			e0: make([]EntityComponentPair[T], 0),
+			e1: make([]EntityComponentPair[T], 0),
+		}
+		vi = vv
+	}
+	v := vi.(*eventStorage[EntityComponentPair[T]])
+	return v
+}
+
+func getComponentRemovedEventsParent[T Component](w World) *eventStorage[EntityComponentPair[T]] {
+	var zt T
+	zk := typeMapKeyOf(reflect.TypeOf(zt))
+	m := w.getComponentRemovedEvents()
+	vi := m[zk]
+	if vi == nil {
+		vv := &eventStorage[EntityComponentPair[T]]{
+			e0: make([]EntityComponentPair[T], 0),
+			e1: make([]EntityComponentPair[T], 0),
+		}
+		vi = vv
+	}
+	v := vi.(*eventStorage[EntityComponentPair[T]])
+	return v
+}
+
+// ComponentsAdded returns a slice of the added components of the last frame.
+func ComponentsAdded[T Component](ctx *Context) EventReaderFunc[EntityComponentPair[T]] {
+	parent := getComponentAddedEventsParent[T](ctx.world)
+	return parent.newReader()
+}
+
+// ComponentsRemoved returns a slice of the removed components of the last frame.
+func ComponentsRemoved[T Component](ctx *Context) EventReaderFunc[EntityComponentPair[T]] {
+	parent := getComponentRemovedEventsParent[T](ctx.world)
+	return parent.newReader()
+}

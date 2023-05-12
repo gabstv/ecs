@@ -73,7 +73,7 @@ func (s *componentStorage[T]) entityAt(index int) Entity {
 	return s.Items[index].Entity
 }
 
-func (s *componentStorage[T]) removeEntity(e Entity) {
+func (s *componentStorage[T]) removeEntity(e Entity) any {
 	if index, ok := slices.BinarySearchFunc(s.Items, e, func(cs componentStore[T], target Entity) int {
 		if cs.Entity < target {
 			return -1
@@ -84,14 +84,46 @@ func (s *componentStorage[T]) removeEntity(e Entity) {
 		return 0
 	}); ok {
 		s.Items[index].IsDeleted = true
+		return s.Items[index].Component
 	}
+	return nil
+}
+
+func (s *componentStorage[T]) fireComponentRemovedEvent(w World, e Entity, datacopy any) {
+	getComponentRemovedEventsParent[T](w).add(EntityComponentPair[T]{
+		Entity:        e,
+		ComponentCopy: datacopy.(T),
+	})
+}
+
+func (s *componentStorage[T]) findEntity(e Entity) (index int, data *T) {
+	if index, ok := slices.BinarySearchFunc(s.Items, e, func(cs componentStore[T], target Entity) int {
+		if cs.Entity < target {
+			return -1
+		}
+		if cs.Entity > target {
+			return 1
+		}
+		return 0
+	}); ok {
+		s.Items[index].IsDeleted = true
+		if s.Items[index].IsDeleted {
+			return -1, nil
+		}
+		return index, &(&s.Items[index]).Component
+	}
+	return -1, nil
 }
 
 type worldComponentStorage interface {
 	ComponentType() reflect.Type
 	ComponentMask() U256
 	entityAt(index int) Entity
-	removeEntity(e Entity)
+	removeEntity(e Entity) any
+	// the only purpose of this function is to be called inside the world.removeEntity() function
+	// This is because the component events are Generic, and the world cannot call generic methods.
+	// The datacopy parameter is a struct copy of the component at the time of the event.
+	fireComponentRemovedEvent(w World, e Entity, datacopy any)
 }
 
 func removeComponent[T Component](w World, e Entity) {
@@ -101,5 +133,22 @@ func removeComponent[T Component](w World, e Entity) {
 		return
 	}
 	fe.ComponentMap = fe.ComponentMap.AndNot(cs.ComponentMask())
-	cs.removeEntity(e)
+	tv := cs.removeEntity(e)
+	if tv == nil {
+		return
+	}
+	d := tv.(T)
+	getComponentRemovedEventsParent[T](w).add(EntityComponentPair[T]{
+		Entity:        e,
+		ComponentCopy: d,
+	})
+}
+
+// GetComponent is a moderately expensive operation (in ECS terms) since it
+// performs a binary search on the component storage. It is recommended to
+// use a query instead of this function.
+func GetComponent[T Component](ctx *Context, entity Entity) *T {
+	ct := getOrCreateComponentStorage[T](ctx.world)
+	_, ref := ct.findEntity(entity)
+	return ref
 }

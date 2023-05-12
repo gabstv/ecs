@@ -34,6 +34,8 @@ type World interface {
 	setResource(TypeMapKey, any)
 	getResource(TypeMapKey) any
 	getEvents() map[TypeMapKey]any
+	getComponentAddedEvents() map[TypeMapKey]any
+	getComponentRemovedEvents() map[TypeMapKey]any
 }
 
 type worldImpl struct {
@@ -44,6 +46,8 @@ type worldImpl struct {
 	events            map[TypeMapKey]any
 	components        []worldComponentStorage
 	componentsIndex   map[TypeMapKey]int // TypeHash here represents a single type
+	componentsAdded   map[TypeMapKey]any
+	componentsRemoved map[TypeMapKey]any
 	systems           []worldSystem
 	startupSystems    []System
 	queries           map[TypeTape]any
@@ -52,6 +56,13 @@ type worldImpl struct {
 	lastCommands *Context
 
 	entitiesNeedSorting bool
+}
+
+func (w *worldImpl) getComponentAddedEvents() map[TypeMapKey]any {
+	return w.componentsAdded
+}
+func (w *worldImpl) getComponentRemovedEvents() map[TypeMapKey]any {
+	return w.componentsRemoved
 }
 
 func (w *worldImpl) ShallowCopy() World {
@@ -65,6 +76,12 @@ func (w *worldImpl) ShallowCopy() World {
 
 func (w *worldImpl) Step() {
 	for _, v := range w.events {
+		v.(genericEventStorage).step()
+	}
+	for _, v := range w.componentsAdded {
+		v.(genericEventStorage).step()
+	}
+	for _, v := range w.componentsRemoved {
 		v.(genericEventStorage).step()
 	}
 	commands := w.getCommands()
@@ -96,13 +113,15 @@ func (w *worldImpl) Exec(fn func(*Context)) {
 
 func NewWorld() World {
 	return &worldImpl{
-		components:      make([]worldComponentStorage, 0, 256),
-		componentsIndex: make(map[TypeMapKey]int),
-		events:          make(map[TypeMapKey]any),
-		queries:         make(map[TypeTape]any),
-		resources:       make(map[TypeMapKey]any),
-		systems:         make([]worldSystem, 0, 1024),
-		startupSystems:  make([]System, 0, 256),
+		components:        make([]worldComponentStorage, 0, 256),
+		componentsIndex:   make(map[TypeMapKey]int),
+		componentsAdded:   make(map[TypeMapKey]any),
+		componentsRemoved: make(map[TypeMapKey]any),
+		events:            make(map[TypeMapKey]any),
+		queries:           make(map[TypeTape]any),
+		resources:         make(map[TypeMapKey]any),
+		systems:           make([]worldSystem, 0, 1024),
+		startupSystems:    make([]System, 0, 256),
 	}
 }
 
@@ -230,7 +249,9 @@ func (w *worldImpl) removeEntity(e Entity) {
 			if w.entities[index].ComponentMap.And(bm).IsZero() {
 				continue
 			}
-			v.removeEntity(e)
+			if d := v.removeEntity(e); d != nil {
+				v.fireComponentRemovedEvent(w, e, d)
+			}
 		}
 		w.entities[index].ComponentMap = uint256.Zero()
 	}
@@ -297,6 +318,13 @@ type worldShallowCopy struct {
 	lastSystemID   uint64
 	systems        []worldSystem
 	startupSystems []System
+}
+
+func (w *worldShallowCopy) getComponentAddedEvents() map[TypeMapKey]any {
+	return w.parent.getComponentAddedEvents()
+}
+func (w *worldShallowCopy) getComponentRemovedEvents() map[TypeMapKey]any {
+	return w.parent.getComponentRemovedEvents()
 }
 
 func (w *worldShallowCopy) Exec(fn func(*Context)) {

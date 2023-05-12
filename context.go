@@ -73,6 +73,7 @@ func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Context, data
 func RemoveEntity(ctx *Context, e Entity) {
 	ctx.commands = append(ctx.commands, func() {
 		ctx.world.removeEntity(e)
+		//the component removed event is called inside the removeEntity function
 	})
 }
 
