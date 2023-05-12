@@ -10,6 +10,10 @@ type Component interface {
 	any
 }
 
+type ComponentWithCallback interface {
+	OnAddedToEntity(e Entity)
+}
+
 type componentStore[T Component] struct {
 	Entity    Entity
 	Component T
@@ -33,6 +37,12 @@ func (s componentStorage[T]) ComponentMask() U256 {
 }
 
 func (s *componentStorage[T]) Add(e Entity, data T) {
+	// call OnAddedToEntity on *T if it exists;
+	// this is useful for components that need a reference of their own entity;
+	if di, ok := any(&data).(ComponentWithCallback); ok {
+		di.OnAddedToEntity(e)
+	}
+
 	if len(s.Items) == 0 {
 		s.Items = append(s.Items, componentStore[T]{
 			Entity:    e,
