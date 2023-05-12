@@ -10,6 +10,9 @@ import (
 )
 
 type World interface {
+	// Exec executes code immediately in the current world. This should be avoided, but it's useful
+	// for game engines  to setup things before a worrld.Step() call.
+	Exec(func(*Context))
 	// ShallowCopy will return a new world that shares the same entities, components and resources, but
 	// not the same systems. This is useful to separate logic from rendering, for example.
 	ShallowCopy() World
@@ -74,6 +77,13 @@ func (w *worldImpl) Step() {
 	}
 	commands.currentSystem = nil
 	w.commit()
+}
+
+func (w *worldImpl) Exec(fn func(*Context)) {
+	commands := w.getCommands()
+	commands.currentSystem = nil
+	commands.isStartupSystem = true
+	fn(commands)
 }
 
 func NewWorld() World {
@@ -273,6 +283,13 @@ type worldShallowCopy struct {
 	lastSystemID   uint64
 	systems        []worldSystem
 	startupSystems []System
+}
+
+func (w *worldShallowCopy) Exec(fn func(*Context)) {
+	commands := w.getCommands()
+	commands.currentSystem = nil
+	commands.isStartupSystem = true
+	fn(commands)
 }
 
 func (w *worldShallowCopy) ShallowCopy() World {
