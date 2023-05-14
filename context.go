@@ -34,43 +34,43 @@ func LocalResource[T any](c *Context) *T {
 type EntityCommandCallback func(ctx *Context, e Entity)
 
 func Spawn[T Component](c *Context, data T, actions ...EntityCommandCallback) {
-	c.commands = append(c.commands, newSpawnCommand(c.world, data))
+	c.commands = append(c.commands, newSpawnCommand(c.world, data, actions...))
 }
 
-func Spawn2[T1, T2 Component](c *Context, data1 T1, data2 T2) {
-	c.commands = append(c.commands, newSpawn2Command(c.world, data1, data2))
+func Spawn2[T1, T2 Component](c *Context, data1 T1, data2 T2, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn2Command(c.world, data1, data2, actions...))
 }
 
-func Spawn3[T1, T2, T3 Component](c *Context, data1 T1, data2 T2, data3 T3) {
-	c.commands = append(c.commands, newSpawn3Command(c.world, data1, data2, data3))
+func Spawn3[T1, T2, T3 Component](c *Context, data1 T1, data2 T2, data3 T3, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn3Command(c.world, data1, data2, data3, actions...))
 }
 
-func Spawn4[T1, T2, T3, T4 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4) {
-	c.commands = append(c.commands, newSpawn4Command(c.world, data1, data2, data3, data4))
+func Spawn4[T1, T2, T3, T4 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn4Command(c.world, data1, data2, data3, data4, actions...))
 }
 
-func Spawn5[T1, T2, T3, T4, T5 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5) {
-	c.commands = append(c.commands, newSpawn5Command(c.world, data1, data2, data3, data4, data5))
+func Spawn5[T1, T2, T3, T4, T5 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn5Command(c.world, data1, data2, data3, data4, data5, actions...))
 }
 
-func Spawn6[T1, T2, T3, T4, T5, T6 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6) {
-	c.commands = append(c.commands, newSpawn6Command(c.world, data1, data2, data3, data4, data5, data6))
+func Spawn6[T1, T2, T3, T4, T5, T6 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn6Command(c.world, data1, data2, data3, data4, data5, data6, actions...))
 }
 
-func Spawn7[T1, T2, T3, T4, T5, T6, T7 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7) {
-	c.commands = append(c.commands, newSpawn7Command(c.world, data1, data2, data3, data4, data5, data6, data7))
+func Spawn7[T1, T2, T3, T4, T5, T6, T7 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn7Command(c.world, data1, data2, data3, data4, data5, data6, data7, actions...))
 }
 
-func Spawn8[T1, T2, T3, T4, T5, T6, T7, T8 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8) {
-	c.commands = append(c.commands, newSpawn8Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8))
+func Spawn8[T1, T2, T3, T4, T5, T6, T7, T8 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn8Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, actions...))
 }
 
-func Spawn9[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9) {
-	c.commands = append(c.commands, newSpawn9Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9))
+func Spawn9[T1, T2, T3, T4, T5, T6, T7, T8, T9 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn9Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9, actions...))
 }
 
-func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10) {
-	c.commands = append(c.commands, newSpawn10Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9, data10))
+func Spawn10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 Component](c *Context, data1 T1, data2 T2, data3 T3, data4 T4, data5 T5, data6 T6, data7 T7, data8 T8, data9 T9, data10 T10, actions ...EntityCommandCallback) {
+	c.commands = append(c.commands, newSpawn10Command(c.world, data1, data2, data3, data4, data5, data6, data7, data8, data9, data10, actions...))
 }
 
 func RemoveEntity(ctx *Context, e Entity) {
