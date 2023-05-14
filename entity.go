@@ -16,15 +16,15 @@ type fatEntity struct {
 }
 
 type EntityList struct {
-	items []EntityListItem
+	items []entityListItem
 }
 
-type EntityListItem struct {
+type entityListItem struct {
 	Entity    Entity
 	IsRemoved bool
 }
 
-func eliBinSearch(eli EntityListItem, entity Entity) int {
+func eliBinSearch(eli entityListItem, entity Entity) int {
 	if eli.Entity < entity {
 		return -1
 	}
@@ -39,8 +39,8 @@ func (e *EntityList) Len() int {
 }
 
 func (e *EntityList) Add(entity Entity) {
-	if len(e.items) < 1 {
-		e.items = append(e.items, EntityListItem{
+	if len(e.items) < 1 || e.items[len(e.items)-1].Entity < entity {
+		e.items = append(e.items, entityListItem{
 			Entity:    entity,
 			IsRemoved: false,
 		})
@@ -51,7 +51,7 @@ func (e *EntityList) Add(entity Entity) {
 		e.items[index].IsRemoved = false
 		return
 	}
-	e.items = slices.Insert(e.items, index, EntityListItem{
+	e.items = slices.Insert(e.items, index, entityListItem{
 		Entity:    entity,
 		IsRemoved: false,
 	})
@@ -66,7 +66,7 @@ func (e *EntityList) Remove(entity Entity) {
 }
 
 func (e *EntityList) GC() {
-	var newItems []EntityListItem
+	var newItems []entityListItem
 	for _, v := range e.items {
 		if !v.IsRemoved {
 			newItems = append(newItems, v)
