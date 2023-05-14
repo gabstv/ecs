@@ -23,14 +23,14 @@ type World interface {
 	addComponentStorage(cs worldComponentStorage)
 	addSystem(sys worldSystem) (SystemID, error)
 	addStartupSystem(sys System)
-	getCommands() *Context
+	getContext() *Context
 	getComponentStorage(reflect.Type) worldComponentStorage
 	getFatEntity(Entity) *fatEntity
 	// getQuery may return nil
 	getQuery(TypeTape) any
 	newComponentMask() U256
 	newEntity() Entity
-	removeEntity(Entity)
+	removeEntity(*Context, Entity)
 	setResource(TypeMapKey, any)
 	getResource(TypeMapKey) any
 	getEvents() map[TypeMapKey]any
@@ -84,28 +84,32 @@ func (w *worldImpl) Step() {
 	for _, v := range w.componentsRemoved {
 		v.(genericEventStorage).step()
 	}
-	commands := w.getCommands()
-	commands.currentSystem = nil
-	commands.isStartupSystem = true
+	ctx := w.getContext()
+	ctx.currentSystem = nil
+	ctx.isStartupSystem = true
+	ctx.currentSystemIndex = -1000
 	for _, v := range w.startupSystems {
-		v(commands)
-		commands.run()
+		v(ctx)
+		ctx.run()
 		w.clearCommands()
+		ctx.currentSystemIndex++
 	}
+	ctx.currentSystemIndex = 0
 	w.startupSystems = w.startupSystems[:0]
-	commands.isStartupSystem = false
+	ctx.isStartupSystem = false
 	for i, v := range w.systems {
-		commands.currentSystem = &w.systems[i]
-		v.Value(commands)
-		commands.run()
+		ctx.currentSystem = &w.systems[i]
+		v.Value(ctx)
+		ctx.run()
 		w.clearCommands()
+		ctx.currentSystemIndex++
 	}
-	commands.currentSystem = nil
+	ctx.currentSystem = nil
 	w.commit()
 }
 
 func (w *worldImpl) Exec(fn func(*Context)) {
-	commands := w.getCommands()
+	commands := w.getContext()
 	commands.currentSystem = nil
 	commands.isStartupSystem = true
 	fn(commands)
@@ -166,7 +170,7 @@ func (w *worldImpl) addStartupSystem(sys System) {
 	w.startupSystems = append(w.startupSystems, sys)
 }
 
-func (w *worldImpl) getCommands() *Context {
+func (w *worldImpl) getContext() *Context {
 	if w.lastCommands != nil {
 		return w.lastCommands
 	}
@@ -234,7 +238,7 @@ func (w *worldImpl) newEntity() Entity {
 	return Entity(w.lastEntityID)
 }
 
-func (w *worldImpl) removeEntity(e Entity) {
+func (w *worldImpl) removeEntity(ctx *Context, e Entity) {
 	if index, ok := slices.BinarySearchFunc(w.entities, e, func(fe fatEntity, target Entity) int {
 		if fe.Entity < target {
 			return -1
@@ -251,8 +255,8 @@ func (w *worldImpl) removeEntity(e Entity) {
 			if w.entities[index].ComponentMap.And(bm).IsZero() {
 				continue
 			}
-			if d := v.removeEntity(e); d != nil {
-				v.fireComponentRemovedEvent(w, e, d)
+			if d := v.removeEntity(ctx, e); d != nil {
+				v.fireComponentRemovedEvent(ctx, e, d)
 			}
 		}
 		w.entities[index].ComponentMap = uint256.Zero()
@@ -330,7 +334,7 @@ func (w *worldShallowCopy) getComponentRemovedEvents() map[TypeMapKey]any {
 }
 
 func (w *worldShallowCopy) Exec(fn func(*Context)) {
-	commands := w.getCommands()
+	commands := w.getContext()
 	commands.currentSystem = nil
 	commands.isStartupSystem = true
 	fn(commands)
@@ -351,7 +355,7 @@ func (w *worldShallowCopy) Step() {
 		v.(genericEventStorage).step()
 	}
 	pw := w.parent
-	commands := w.parent.getCommands()
+	commands := w.parent.getContext()
 	commands.world = w
 	defer func() {
 		commands.world = pw
@@ -398,8 +402,8 @@ func (w *worldShallowCopy) addStartupSystem(sys System) {
 	w.startupSystems = append(w.startupSystems, sys)
 }
 
-func (w *worldShallowCopy) getCommands() *Context {
-	return w.parent.getCommands()
+func (w *worldShallowCopy) getContext() *Context {
+	return w.parent.getContext()
 }
 
 func (w *worldShallowCopy) getComponentStorage(t reflect.Type) worldComponentStorage {
@@ -423,8 +427,8 @@ func (w *worldShallowCopy) newComponentMask() U256 {
 func (w *worldShallowCopy) newEntity() Entity {
 	return w.parent.newEntity()
 }
-func (w *worldShallowCopy) removeEntity(e Entity) {
-	w.parent.removeEntity(e)
+func (w *worldShallowCopy) removeEntity(ctx *Context, e Entity) {
+	w.parent.removeEntity(ctx, e)
 }
 func (w *worldShallowCopy) setResource(k TypeMapKey, r any) {
 	w.parent.setResource(k, r)

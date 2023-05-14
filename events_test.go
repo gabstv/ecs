@@ -47,4 +47,12 @@ func TestComponentAddedEvent(t *testing.T) {
 	if addedNames[0] != "bacon" {
 		t.Fatal("addedNames[0] != bacon")
 	}
+	w.Step()
+	// test double dipping
+	if nadded != 3 {
+		t.Fatal("nadded != 3")
+	}
+	if len(addedNames) != 3 {
+		t.Fatal("len(addedNames) != 3")
+	}
 }

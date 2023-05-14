@@ -96,7 +96,7 @@ func (s *componentStorage[T]) entityAt(index int) Entity {
 	return s.Items[index].Entity
 }
 
-func (s *componentStorage[T]) removeEntity(e Entity) any {
+func (s *componentStorage[T]) removeEntity(ctx *Context, e Entity) any {
 	if index, ok := slices.BinarySearchFunc(s.Items, e, func(cs componentStore[T], target Entity) int {
 		if cs.Entity < target {
 			return -1
@@ -130,8 +130,9 @@ func (s *componentStorage[T]) removeEntity(e Entity) any {
 	return nil
 }
 
-func (s *componentStorage[T]) fireComponentRemovedEvent(w World, e Entity, datacopy any) {
-	getComponentRemovedEventsParent[T](w).add(EntityComponentPair[T]{
+func (s *componentStorage[T]) fireComponentRemovedEvent(ctx *Context, e Entity, datacopy any) {
+	w := ctx.world
+	getComponentRemovedEventsParent[T](w).add(ctx, EntityComponentPair[T]{
 		Entity:        e,
 		ComponentCopy: datacopy.(T),
 	})
@@ -159,26 +160,27 @@ type worldComponentStorage interface {
 	ComponentType() reflect.Type
 	ComponentMask() U256
 	entityAt(index int) Entity
-	removeEntity(e Entity) any
+	removeEntity(ctx *Context, e Entity) any
 	// the only purpose of this function is to be called inside the world.removeEntity() function
 	// This is because the component events are Generic, and the world cannot call generic methods.
 	// The datacopy parameter is a struct copy of the component at the time of the event.
-	fireComponentRemovedEvent(w World, e Entity, datacopy any)
+	fireComponentRemovedEvent(ctx *Context, e Entity, datacopy any)
 }
 
-func removeComponent[T Component](w World, e Entity) {
+func removeComponent[T Component](ctx *Context, e Entity) {
+	w := ctx.world
 	cs := getOrCreateComponentStorage[T](w)
 	fe := w.getFatEntity(e)
 	if fe.ComponentMap.And(cs.ComponentMask()).IsZero() {
 		return
 	}
 	fe.ComponentMap = fe.ComponentMap.AndNot(cs.ComponentMask())
-	tv := cs.removeEntity(e)
+	tv := cs.removeEntity(ctx, e)
 	if tv == nil {
 		return
 	}
 	d := tv.(T)
-	getComponentRemovedEventsParent[T](w).add(EntityComponentPair[T]{
+	getComponentRemovedEventsParent[T](w).add(ctx, EntityComponentPair[T]{
 		Entity:        e,
 		ComponentCopy: d,
 	})
