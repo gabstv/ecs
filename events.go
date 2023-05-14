@@ -100,6 +100,7 @@ func getComponentAddedEventsParent[T Component](w World) *eventStorage[EntityCom
 			e1: make([]EntityComponentPair[T], 0),
 		}
 		vi = vv
+		m[zk] = vi
 	}
 	v := vi.(*eventStorage[EntityComponentPair[T]])
 	return v
@@ -116,6 +117,7 @@ func getComponentRemovedEventsParent[T Component](w World) *eventStorage[EntityC
 			e1: make([]EntityComponentPair[T], 0),
 		}
 		vi = vv
+		m[zk] = vi
 	}
 	v := vi.(*eventStorage[EntityComponentPair[T]])
 	return v
