@@ -147,7 +147,6 @@ func (s *componentStorage[T]) findEntity(e Entity) (index int, data *T) {
 		}
 		return 0
 	}); ok {
-		s.Items[index].IsDeleted = true
 		if s.Items[index].IsDeleted {
 			return -1, nil
 		}
