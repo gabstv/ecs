@@ -93,6 +93,12 @@ func AddComponent[T Component](ctx *Context, e Entity, data T, actions ...Entity
 	})
 }
 
+func GC(ctx *Context) {
+	ctx.commands = append(ctx.commands, func(ctx *Context) {
+		ctx.world.gc()
+	})
+}
+
 func (ctx *Context) run() {
 	for _, cmd := range ctx.commands {
 		cmd(ctx)
