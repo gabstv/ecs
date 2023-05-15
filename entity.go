@@ -84,3 +84,7 @@ func (e *EntityList) All() []Entity {
 	}
 	return el
 }
+
+func (e *EntityList) Clear() {
+	e.items = e.items[:0]
+}
