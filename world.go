@@ -36,6 +36,7 @@ type World interface {
 	getEvents() map[TypeMapKey]any
 	getComponentAddedEvents() map[TypeMapKey]any
 	getComponentRemovedEvents() map[TypeMapKey]any
+	gc()
 }
 
 type worldImpl struct {
@@ -263,6 +264,20 @@ func (w *worldImpl) removeEntity(ctx *Context, e Entity) {
 	}
 }
 
+func (w *worldImpl) gc() {
+	for _, c := range w.components {
+		c.gc()
+	}
+	ecopy := make([]fatEntity, 0, cap(w.entities))
+	for _, v := range w.entities {
+		if v.IsRemoved {
+			continue
+		}
+		ecopy = append(ecopy, v)
+	}
+	w.entities = ecopy
+}
+
 func (w *worldImpl) getResource(k TypeMapKey) any {
 	if r, ok := w.resources[k]; ok {
 		return r
@@ -435,4 +450,8 @@ func (w *worldShallowCopy) setResource(k TypeMapKey, r any) {
 }
 func (w *worldShallowCopy) getResource(k TypeMapKey) any {
 	return w.parent.getResource(k)
+}
+
+func (w *worldShallowCopy) gc() {
+	w.parent.gc()
 }

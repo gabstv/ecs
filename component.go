@@ -156,6 +156,19 @@ func (s *componentStorage[T]) findEntity(e Entity) (index int, data *T) {
 	return -1, nil
 }
 
+func (s *componentStorage[T]) gc() {
+	icopy := make([]componentStore[T], 0, cap(s.Items))
+	for _, v := range s.Items {
+		if !v.IsDeleted {
+			icopy = append(icopy, v)
+		}
+	}
+	s.Items = icopy
+	for _, wr := range s.references {
+		wr.refresh()
+	}
+}
+
 type worldComponentStorage interface {
 	ComponentType() reflect.Type
 	ComponentMask() U256
@@ -165,6 +178,7 @@ type worldComponentStorage interface {
 	// This is because the component events are Generic, and the world cannot call generic methods.
 	// The datacopy parameter is a struct copy of the component at the time of the event.
 	fireComponentRemovedEvent(ctx *Context, e Entity, datacopy any)
+	gc()
 }
 
 func removeComponent[T Component](ctx *Context, e Entity) {
