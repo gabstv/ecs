@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync"
 
 	"github.com/Pilatuz/bigz/uint256"
 	"golang.org/x/exp/slices"
@@ -50,7 +51,8 @@ type worldImpl struct {
 	componentsAdded   map[TypeMapKey]any
 	componentsRemoved map[TypeMapKey]any
 	systems           []worldSystem
-	startupSystems    []System
+	startupSystemsBuf []System
+	startupSystems    Container[System]
 	queries           map[TypeTape]any
 	resources         map[TypeMapKey]any
 
@@ -68,10 +70,10 @@ func (w *worldImpl) getComponentRemovedEvents() map[TypeMapKey]any {
 
 func (w *worldImpl) ShallowCopy() World {
 	return &worldShallowCopy{
-		parent:         w,
-		systems:        make([]worldSystem, 0, 32),
-		startupSystems: make([]System, 0, 16),
-		events:         make(map[TypeMapKey]any),
+		parent:            w,
+		systems:           make([]worldSystem, 0, 32),
+		startupSystemsBuf: make([]System, 0, 16),
+		events:            make(map[TypeMapKey]any),
 	}
 }
 
@@ -89,14 +91,15 @@ func (w *worldImpl) Step() {
 	ctx.currentSystem = nil
 	ctx.isStartupSystem = true
 	ctx.currentSystemIndex = -1000
-	for _, v := range w.startupSystems {
+	w.startupSystemsBuf = w.startupSystems.GetAllAndDeleteAll(w.startupSystemsBuf)
+	for _, v := range w.startupSystemsBuf {
 		v(ctx)
 		ctx.run()
 		w.clearCommands()
 		ctx.currentSystemIndex++
 	}
 	ctx.currentSystemIndex = 0
-	w.startupSystems = w.startupSystems[:0]
+	w.startupSystemsBuf = w.startupSystemsBuf[:0]
 	ctx.isStartupSystem = false
 	for i, v := range w.systems {
 		ctx.currentSystem = &w.systems[i]
@@ -128,7 +131,7 @@ func NewWorld() World {
 		queries:           make(map[TypeTape]any),
 		resources:         make(map[TypeMapKey]any),
 		systems:           make([]worldSystem, 0, 1024),
-		startupSystems:    make([]System, 0, 256),
+		startupSystemsBuf: make([]System, 0, 256),
 	}
 }
 
@@ -167,8 +170,9 @@ func (w *worldImpl) addSystem(sys worldSystem) (SystemID, error) {
 	return sys.ID, nil
 }
 
+// this is thread safe
 func (w *worldImpl) addStartupSystem(sys System) {
-	w.startupSystems = append(w.startupSystems, sys)
+	w.startupSystems.Insert(sys)
 }
 
 func (w *worldImpl) getContext() *Context {
@@ -296,7 +300,11 @@ func (w *worldImpl) setResource(k TypeMapKey, r any) {
 	}
 }
 
+var getOrCreateComponentStorageLock sync.Mutex
+
 func getOrCreateComponentStorage[T Component](w World) *componentStorage[T] {
+	getOrCreateComponentStorageLock.Lock()
+	defer getOrCreateComponentStorageLock.Unlock()
 	var zt T
 	ct := w.getComponentStorage(reflect.TypeOf(zt))
 	if ct != nil {
@@ -335,10 +343,11 @@ func (w *worldImpl) commit() {
 type worldShallowCopy struct {
 	parent *worldImpl
 
-	events         map[TypeMapKey]any
-	lastSystemID   uint64
-	systems        []worldSystem
-	startupSystems []System
+	events            map[TypeMapKey]any
+	lastSystemID      uint64
+	systems           []worldSystem
+	startupSystems    Container[System]
+	startupSystemsBuf []System
 }
 
 func (w *worldShallowCopy) getComponentAddedEvents() map[TypeMapKey]any {
@@ -359,9 +368,9 @@ func (w *worldShallowCopy) Exec(fn func(*Context)) {
 
 func (w *worldShallowCopy) ShallowCopy() World {
 	return &worldShallowCopy{
-		parent:         w.parent,
-		systems:        make([]worldSystem, 0, 32),
-		startupSystems: make([]System, 0, 16),
+		parent:            w.parent,
+		systems:           make([]worldSystem, 0, 32),
+		startupSystemsBuf: make([]System, 0, 16),
 	}
 }
 
@@ -375,12 +384,13 @@ func (w *worldShallowCopy) Step() {
 	defer func() {
 		commands.world = pw
 	}()
-	for _, v := range w.startupSystems {
+	w.startupSystemsBuf = w.startupSystems.GetAllAndDeleteAll(w.startupSystemsBuf)
+	for _, v := range w.startupSystemsBuf {
 		v(commands)
 		commands.run()
 		w.parent.clearCommands()
 	}
-	w.startupSystems = w.startupSystems[:0]
+	w.startupSystemsBuf = w.startupSystemsBuf[:0]
 	for _, v := range w.systems {
 		v.Value(commands)
 		commands.run()
@@ -413,8 +423,9 @@ func (w *worldShallowCopy) addSystem(sys worldSystem) (SystemID, error) {
 	return sys.ID, nil
 }
 
+// this is thread safe :)
 func (w *worldShallowCopy) addStartupSystem(sys System) {
-	w.startupSystems = append(w.startupSystems, sys)
+	w.startupSystems.Insert(sys)
 }
 
 func (w *worldShallowCopy) getContext() *Context {

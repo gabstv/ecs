@@ -4,6 +4,9 @@ type SystemID uint64
 
 type System func(*Context)
 
+// AddStartupSystem adds a system that will be run once at the start of the
+// nest Step() call.
+// AddStartupSystem is thread safe.
 func AddStartupSystem(w World, system func(*Context)) {
 	w.addStartupSystem(system)
 }
