@@ -242,9 +242,9 @@ func removeComponent[T Component](ctx *Context, e Entity) {
 
 // EnsureComponentAffinity ensures that the component storage for this component is in the same memory region as the other components.
 // This is useful to play nice with the CPU cache.
-func EnsureComponentAffinity[T1, T2 Component](ctx *Context) {
-	ct1 := getOrCreateComponentStorage[T1](ctx.world, 0)
-	ct2 := getOrCreateComponentStorage[T2](ctx.world, 0)
+func EnsureComponentAffinity[T1, T2 Component](w World) {
+	ct1 := getOrCreateComponentStorage[T1](w, 0)
+	ct2 := getOrCreateComponentStorage[T2](w, 0)
 	ct1.appendSibling(ct2)
 	ct2.appendSibling(ct1)
 }
@@ -252,8 +252,8 @@ func EnsureComponentAffinity[T1, T2 Component](ctx *Context) {
 // EnsureComponentCapacity must run before any AddComponent call to be effective.
 // Use this when you have an idea of the average number of entities that will have this component.
 // A smart use of this function can reduce the number of allocations.
-func EnsureComponentCapacity[T Component](ctx *Context, capacity int) {
-	ct := getOrCreateComponentStorage[T](ctx.world, capacity)
+func EnsureComponentCapacity[T Component](w World, capacity int) {
+	ct := getOrCreateComponentStorage[T](w, capacity)
 	ct.ensureCapacity(capacity, false)
 }
 
