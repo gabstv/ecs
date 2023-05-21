@@ -56,7 +56,8 @@ type worldImpl struct {
 	queries           map[TypeTape]any
 	resources         map[TypeMapKey]any
 
-	lastCommands *Context
+	lastContext      *Context
+	lastContextMutex sync.Mutex
 
 	entitiesNeedSorting bool
 }
@@ -176,13 +177,15 @@ func (w *worldImpl) addStartupSystem(sys System) {
 }
 
 func (w *worldImpl) getContext() *Context {
-	if w.lastCommands != nil {
-		return w.lastCommands
+	w.lastContextMutex.Lock()
+	defer w.lastContextMutex.Unlock()
+	if w.lastContext != nil {
+		return w.lastContext
 	}
-	w.lastCommands = &Context{
+	w.lastContext = &Context{
 		world: w,
 	}
-	return w.lastCommands
+	return w.lastContext
 }
 
 func (w *worldImpl) getComponentStorage(t reflect.Type) worldComponentStorage {
@@ -323,10 +326,10 @@ func getOrCreateComponentStorage[T Component](w World) *componentStorage[T] {
 }
 
 func (w *worldImpl) clearCommands() {
-	if w.lastCommands == nil {
+	if w.lastContext == nil {
 		return
 	}
-	w.lastCommands.commands = w.lastCommands.commands[:0]
+	w.lastContext.commands = w.lastContext.commands[:0]
 }
 
 func (w *worldImpl) commit() {
