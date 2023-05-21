@@ -2,16 +2,20 @@ package ecs
 
 import (
 	"reflect"
+	"sync"
 )
 
 // eventStorage may have a one frame delay if the reader system runs before the writer system
 type eventStorage[T any] struct {
+	lock  sync.RWMutex
 	frame uint64
 	e0    []eventStorageItem[T]
 	e1    []eventStorageItem[T]
 }
 
 func (es *eventStorage[T]) step() {
+	es.lock.Lock()
+	defer es.lock.Unlock()
 	var zt eventStorageItem[T]
 	es.frame++
 	for len(es.e0) < len(es.e1) {
@@ -23,6 +27,8 @@ func (es *eventStorage[T]) step() {
 }
 
 func (es *eventStorage[T]) add(ctx *Context, t T) {
+	es.lock.Lock()
+	defer es.lock.Unlock()
 	es.e1 = append(es.e1, eventStorageItem[T]{
 		Data:        t,
 		SystemIndex: ctx.currentSystemIndex,
@@ -30,6 +36,8 @@ func (es *eventStorage[T]) add(ctx *Context, t T) {
 }
 
 func (es *eventStorage[T]) newReader(ctx *Context) EventReaderFunc[T] {
+	es.lock.RLock()
+	defer es.lock.RUnlock()
 	var zv T
 	ecopy := make([]T, 0, len(es.e0)+len(es.e1))
 	// es.e0 is always the previous frame, so we only add it if ctx.currentSystemIndex < es.e0.SystemIndex
@@ -75,6 +83,8 @@ func ensureEventExists[T any](ctx *Context) {
 
 // EventWriter[T]
 func EventWriter[T any](ctx *Context) EventWriterFunc[T] {
+	ctx.eventRWLock.Lock()
+	defer ctx.eventRWLock.Unlock()
 	ensureEventExists[T](ctx)
 	var zt T
 	evmap := ctx.world.getEvents()
@@ -88,6 +98,8 @@ func EventWriter[T any](ctx *Context) EventWriterFunc[T] {
 type EventWriterFunc[T any] func(T)
 
 func EventReader[T any](ctx *Context) EventReaderFunc[T] {
+	ctx.eventRWLock.Lock()
+	defer ctx.eventRWLock.Unlock()
 	ensureEventExists[T](ctx)
 	var zv T
 	evmap := ctx.world.getEvents()

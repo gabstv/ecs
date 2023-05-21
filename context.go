@@ -1,6 +1,9 @@
 package ecs
 
-import "reflect"
+import (
+	"reflect"
+	"sync"
+)
 
 type Context struct {
 	world              World
@@ -8,6 +11,8 @@ type Context struct {
 	currentSystem      *worldSystem
 	isStartupSystem    bool
 	currentSystemIndex int
+
+	eventRWLock *sync.Mutex
 }
 
 func (c *Context) World() World {
@@ -118,6 +123,7 @@ func execSpawnCallbacks(parentctx *Context, e Entity, actions ...EntityCommandCa
 		currentSystem:      parentctx.currentSystem,
 		isStartupSystem:    parentctx.isStartupSystem,
 		currentSystemIndex: parentctx.currentSystemIndex,
+		eventRWLock:        parentctx.eventRWLock,
 	}
 	for _, action := range actions {
 		action(ctxchild, e)

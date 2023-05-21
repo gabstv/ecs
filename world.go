@@ -183,7 +183,8 @@ func (w *worldImpl) getContext() *Context {
 		return w.lastContext
 	}
 	w.lastContext = &Context{
-		world: w,
+		world:       w,
+		eventRWLock: &sync.Mutex{},
 	}
 	return w.lastContext
 }
