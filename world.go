@@ -305,9 +305,12 @@ func (w *worldImpl) setResource(k TypeMapKey, r any) {
 
 var getOrCreateComponentStorageLock sync.Mutex
 
-func getOrCreateComponentStorage[T Component](w World) *componentStorage[T] {
+func getOrCreateComponentStorage[T Component](w World, capacity int) *componentStorage[T] {
 	getOrCreateComponentStorageLock.Lock()
 	defer getOrCreateComponentStorageLock.Unlock()
+	if capacity == 0 {
+		capacity = 16
+	}
 	var zt T
 	ct := w.getComponentStorage(reflect.TypeOf(zt))
 	if ct != nil {
@@ -319,7 +322,7 @@ func getOrCreateComponentStorage[T Component](w World) *componentStorage[T] {
 		zeroType:  reflect.TypeOf(zt),
 		zeroValue: zt,
 		mask:      w.newComponentMask(),
-		Items:     make([]componentStore[T], 0, 16),
+		items:     make([]componentStore[T], 0, capacity),
 	}
 	w.addComponentStorage(tct)
 	return tct

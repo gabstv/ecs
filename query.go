@@ -48,12 +48,12 @@ type worldQuery1[T1 Component] struct {
 
 func (wq *worldQuery1[T1]) Next() bool {
 	wq.cursor1++
-	if wq.cursor1 >= len(wq.cs1.Items) {
+	if wq.cursor1 >= len(wq.cs1.items) {
 		return false
 	}
-	for wq.cs1.Items[wq.cursor1].IsDeleted {
+	for wq.cs1.items[wq.cursor1].IsDeleted {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
@@ -77,7 +77,7 @@ func (wq *worldQuery1[T1]) Clone() Query1[T1] {
 }
 
 func (wq *worldQuery1[T1]) Item() (Entity, *T1) {
-	ref1 := &wq.cs1.Items[wq.cursor1]
+	ref1 := &wq.cs1.items[wq.cursor1]
 	return ref1.Entity, &ref1.Component
 }
 
@@ -96,7 +96,7 @@ func getOrCreateQuery1[T1 Component](w World) Query1[T1] {
 	// to the world
 	// That is why we call getOrCreateComponentStorage
 
-	cs1 := getOrCreateComponentStorage[T1](w)
+	cs1 := getOrCreateComponentStorage[T1](w, 0)
 
 	q := &worldQuery1[T1]{
 		w:       w,
@@ -127,22 +127,22 @@ func (wq *worldQuery2[T1, T2]) Next() bool {
 beginNextWQ2:
 	wq.cursor1++
 	wq.cursor2++
-	if wq.cursor1 >= len(wq.cs1.Items) || wq.cursor2 >= len(wq.cs2.Items) {
+	if wq.cursor1 >= len(wq.cs1.items) || wq.cursor2 >= len(wq.cs2.items) {
 		return false
 	}
-	for wq.cs1.Items[wq.cursor1].Entity < wq.cs2.Items[wq.cursor2].Entity {
+	for wq.cs1.items[wq.cursor1].Entity < wq.cs2.items[wq.cursor2].Entity {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
-	for wq.cs2.Items[wq.cursor2].Entity < wq.cs1.Items[wq.cursor1].Entity {
+	for wq.cs2.items[wq.cursor2].Entity < wq.cs1.items[wq.cursor1].Entity {
 		wq.cursor2++
-		if wq.cursor2 >= len(wq.cs2.Items) {
+		if wq.cursor2 >= len(wq.cs2.items) {
 			return false
 		}
 	}
-	if wq.cs1.Items[wq.cursor1].IsDeleted || wq.cs2.Items[wq.cursor2].IsDeleted {
+	if wq.cs1.items[wq.cursor1].IsDeleted || wq.cs2.items[wq.cursor2].IsDeleted {
 		goto beginNextWQ2
 	}
 	return true
@@ -168,8 +168,8 @@ func (wq *worldQuery2[T1, T2]) Clone() Query2[T1, T2] {
 }
 
 func (wq *worldQuery2[T1, T2]) Item() (Entity, *T1, *T2) {
-	ref1 := &wq.cs1.Items[wq.cursor1]
-	ref2 := &wq.cs2.Items[wq.cursor2]
+	ref1 := &wq.cs1.items[wq.cursor1]
+	ref2 := &wq.cs2.items[wq.cursor2]
 	return ref1.Entity, &ref1.Component, &ref2.Component
 }
 
@@ -191,8 +191,8 @@ func getOrCreateQuery2[T1, T2 Component](w World) Query2[T1, T2] {
 	// to the world
 	// That is why we call getOrCreateComponentStorage
 
-	cs1 := getOrCreateComponentStorage[T1](w)
-	cs2 := getOrCreateComponentStorage[T2](w)
+	cs1 := getOrCreateComponentStorage[T1](w, 0)
+	cs2 := getOrCreateComponentStorage[T2](w, 0)
 
 	q := &worldQuery2[T1, T2]{
 		w:       w,
@@ -225,49 +225,49 @@ type worldQuery3[T1, T2, T3 Component] struct {
 
 func (wq *worldQuery3[T1, T2, T3]) Next() bool {
 beginNextWQ3:
-	if wq.cursor1 >= len(wq.cs1.Items) || wq.cursor2 >= len(wq.cs2.Items) || wq.cursor3 >= len(wq.cs3.Items) {
+	if wq.cursor1 >= len(wq.cs1.items) || wq.cursor2 >= len(wq.cs2.items) || wq.cursor3 >= len(wq.cs3.items) {
 		return false
 	}
 	wq.cursor1++
 	wq.cursor2++
 	wq.cursor3++
-	for wq.cs1.Items[wq.cursor1].Entity < wq.cs2.Items[wq.cursor2].Entity {
+	for wq.cs1.items[wq.cursor1].Entity < wq.cs2.items[wq.cursor2].Entity {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
-	for wq.cs1.Items[wq.cursor1].Entity < wq.cs3.Items[wq.cursor3].Entity {
+	for wq.cs1.items[wq.cursor1].Entity < wq.cs3.items[wq.cursor3].Entity {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
-	for wq.cs2.Items[wq.cursor2].Entity < wq.cs1.Items[wq.cursor1].Entity {
+	for wq.cs2.items[wq.cursor2].Entity < wq.cs1.items[wq.cursor1].Entity {
 		wq.cursor2++
-		if wq.cursor2 >= len(wq.cs2.Items) {
+		if wq.cursor2 >= len(wq.cs2.items) {
 			return false
 		}
 	}
-	for wq.cs2.Items[wq.cursor2].Entity < wq.cs3.Items[wq.cursor3].Entity {
+	for wq.cs2.items[wq.cursor2].Entity < wq.cs3.items[wq.cursor3].Entity {
 		wq.cursor2++
-		if wq.cursor2 >= len(wq.cs2.Items) {
+		if wq.cursor2 >= len(wq.cs2.items) {
 			return false
 		}
 	}
-	for wq.cs3.Items[wq.cursor3].Entity < wq.cs1.Items[wq.cursor1].Entity {
+	for wq.cs3.items[wq.cursor3].Entity < wq.cs1.items[wq.cursor1].Entity {
 		wq.cursor3++
-		if wq.cursor3 >= len(wq.cs3.Items) {
+		if wq.cursor3 >= len(wq.cs3.items) {
 			return false
 		}
 	}
-	for wq.cs3.Items[wq.cursor3].Entity < wq.cs2.Items[wq.cursor2].Entity {
+	for wq.cs3.items[wq.cursor3].Entity < wq.cs2.items[wq.cursor2].Entity {
 		wq.cursor3++
-		if wq.cursor3 >= len(wq.cs3.Items) {
+		if wq.cursor3 >= len(wq.cs3.items) {
 			return false
 		}
 	}
-	if wq.cs1.Items[wq.cursor1].IsDeleted || wq.cs2.Items[wq.cursor2].IsDeleted || wq.cs3.Items[wq.cursor3].IsDeleted {
+	if wq.cs1.items[wq.cursor1].IsDeleted || wq.cs2.items[wq.cursor2].IsDeleted || wq.cs3.items[wq.cursor3].IsDeleted {
 		goto beginNextWQ3
 	}
 	return true
@@ -296,9 +296,9 @@ func (wq *worldQuery3[T1, T2, T3]) Clone() Query3[T1, T2, T3] {
 }
 
 func (wq *worldQuery3[T1, T2, T3]) Item() (Entity, *T1, *T2, *T3) {
-	ref1 := &wq.cs1.Items[wq.cursor1]
-	ref2 := &wq.cs2.Items[wq.cursor2]
-	ref3 := &wq.cs3.Items[wq.cursor3]
+	ref1 := &wq.cs1.items[wq.cursor1]
+	ref2 := &wq.cs2.items[wq.cursor2]
+	ref3 := &wq.cs3.items[wq.cursor3]
 	return ref1.Entity, &ref1.Component, &ref2.Component, &ref3.Component
 }
 
@@ -322,9 +322,9 @@ func getOrCreateQuery3[T1, T2, T3 Component](w World) Query3[T1, T2, T3] {
 	// to the world
 	// That is why we call getOrCreateComponentStorage
 
-	cs1 := getOrCreateComponentStorage[T1](w)
-	cs2 := getOrCreateComponentStorage[T2](w)
-	cs3 := getOrCreateComponentStorage[T3](w)
+	cs1 := getOrCreateComponentStorage[T1](w, 0)
+	cs2 := getOrCreateComponentStorage[T2](w, 0)
+	cs3 := getOrCreateComponentStorage[T3](w, 0)
 
 	q := &worldQuery3[T1, T2, T3]{
 		w:       w,
@@ -361,46 +361,46 @@ type worldQuery4[T1, T2, T3, T4 Component] struct {
 
 func (wq *worldQuery4[T1, T2, T3, T4]) Next() bool {
 beginNextWQ4:
-	if wq.cursor1 >= len(wq.cs1.Items) || wq.cursor2 >= len(wq.cs2.Items) || wq.cursor3 >= len(wq.cs3.Items) || wq.cursor4 >= len(wq.cs4.Items) {
+	if wq.cursor1 >= len(wq.cs1.items) || wq.cursor2 >= len(wq.cs2.items) || wq.cursor3 >= len(wq.cs3.items) || wq.cursor4 >= len(wq.cs4.items) {
 		return false
 	}
 	wq.cursor1++
 	wq.cursor2++
 	wq.cursor3++
 	wq.cursor4++
-	for wq.cs1.Items[wq.cursor1].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs1.Items[wq.cursor1].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs1.Items[wq.cursor1].Entity < wq.cs4.Items[wq.cursor4].Entity {
+	for wq.cs1.items[wq.cursor1].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs1.items[wq.cursor1].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs1.items[wq.cursor1].Entity < wq.cs4.items[wq.cursor4].Entity {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
-	for wq.cs2.Items[wq.cursor2].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs2.Items[wq.cursor2].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs2.Items[wq.cursor2].Entity < wq.cs4.Items[wq.cursor4].Entity {
+	for wq.cs2.items[wq.cursor2].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs2.items[wq.cursor2].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs2.items[wq.cursor2].Entity < wq.cs4.items[wq.cursor4].Entity {
 		wq.cursor2++
-		if wq.cursor2 >= len(wq.cs2.Items) {
+		if wq.cursor2 >= len(wq.cs2.items) {
 			return false
 		}
 	}
-	for wq.cs3.Items[wq.cursor3].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs3.Items[wq.cursor3].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs3.Items[wq.cursor3].Entity < wq.cs4.Items[wq.cursor4].Entity {
+	for wq.cs3.items[wq.cursor3].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs3.items[wq.cursor3].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs3.items[wq.cursor3].Entity < wq.cs4.items[wq.cursor4].Entity {
 		wq.cursor3++
-		if wq.cursor3 >= len(wq.cs3.Items) {
+		if wq.cursor3 >= len(wq.cs3.items) {
 			return false
 		}
 	}
-	for wq.cs4.Items[wq.cursor4].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs4.Items[wq.cursor4].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs4.Items[wq.cursor4].Entity < wq.cs3.Items[wq.cursor3].Entity {
+	for wq.cs4.items[wq.cursor4].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs4.items[wq.cursor4].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs4.items[wq.cursor4].Entity < wq.cs3.items[wq.cursor3].Entity {
 		wq.cursor4++
-		if wq.cursor4 >= len(wq.cs4.Items) {
+		if wq.cursor4 >= len(wq.cs4.items) {
 			return false
 		}
 	}
-	if wq.cs1.Items[wq.cursor1].IsDeleted || wq.cs2.Items[wq.cursor2].IsDeleted || wq.cs3.Items[wq.cursor3].IsDeleted || wq.cs4.Items[wq.cursor4].IsDeleted {
+	if wq.cs1.items[wq.cursor1].IsDeleted || wq.cs2.items[wq.cursor2].IsDeleted || wq.cs3.items[wq.cursor3].IsDeleted || wq.cs4.items[wq.cursor4].IsDeleted {
 		goto beginNextWQ4
 	}
 	return true
@@ -432,10 +432,10 @@ func (wq *worldQuery4[T1, T2, T3, T4]) Clone() Query4[T1, T2, T3, T4] {
 }
 
 func (wq *worldQuery4[T1, T2, T3, T4]) Item() (Entity, *T1, *T2, *T3, *T4) {
-	ref1 := &wq.cs1.Items[wq.cursor1]
-	ref2 := &wq.cs2.Items[wq.cursor2]
-	ref3 := &wq.cs3.Items[wq.cursor3]
-	ref4 := &wq.cs4.Items[wq.cursor4]
+	ref1 := &wq.cs1.items[wq.cursor1]
+	ref2 := &wq.cs2.items[wq.cursor2]
+	ref3 := &wq.cs3.items[wq.cursor3]
+	ref4 := &wq.cs4.items[wq.cursor4]
 	return ref1.Entity, &ref1.Component, &ref2.Component, &ref3.Component, &ref4.Component
 }
 
@@ -460,10 +460,10 @@ func getOrCreateQuery4[T1, T2, T3, T4 Component](w World) Query4[T1, T2, T3, T4]
 	// to the world
 	// That is why we call getOrCreateComponentStorage
 
-	cs1 := getOrCreateComponentStorage[T1](w)
-	cs2 := getOrCreateComponentStorage[T2](w)
-	cs3 := getOrCreateComponentStorage[T3](w)
-	cs4 := getOrCreateComponentStorage[T4](w)
+	cs1 := getOrCreateComponentStorage[T1](w, 0)
+	cs2 := getOrCreateComponentStorage[T2](w, 0)
+	cs3 := getOrCreateComponentStorage[T3](w, 0)
+	cs4 := getOrCreateComponentStorage[T4](w, 0)
 
 	q := &worldQuery4[T1, T2, T3, T4]{
 		w:       w,
@@ -504,8 +504,8 @@ type worldQuery5[T1, T2, T3, T4, T5 Component] struct {
 
 func (wq *worldQuery5[T1, T2, T3, T4, T5]) Next() bool {
 beginNextWQ5:
-	if wq.cursor1 >= len(wq.cs1.Items) || wq.cursor2 >= len(wq.cs2.Items) ||
-		wq.cursor3 >= len(wq.cs3.Items) || wq.cursor4 >= len(wq.cs4.Items) || wq.cursor5 >= len(wq.cs5.Items) {
+	if wq.cursor1 >= len(wq.cs1.items) || wq.cursor2 >= len(wq.cs2.items) ||
+		wq.cursor3 >= len(wq.cs3.items) || wq.cursor4 >= len(wq.cs4.items) || wq.cursor5 >= len(wq.cs5.items) {
 		return false
 	}
 	wq.cursor1++
@@ -513,54 +513,54 @@ beginNextWQ5:
 	wq.cursor3++
 	wq.cursor4++
 	wq.cursor5++
-	for wq.cs1.Items[wq.cursor1].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs1.Items[wq.cursor1].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs1.Items[wq.cursor1].Entity < wq.cs4.Items[wq.cursor4].Entity ||
-		wq.cs1.Items[wq.cursor1].Entity < wq.cs5.Items[wq.cursor5].Entity {
+	for wq.cs1.items[wq.cursor1].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs1.items[wq.cursor1].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs1.items[wq.cursor1].Entity < wq.cs4.items[wq.cursor4].Entity ||
+		wq.cs1.items[wq.cursor1].Entity < wq.cs5.items[wq.cursor5].Entity {
 		wq.cursor1++
-		if wq.cursor1 >= len(wq.cs1.Items) {
+		if wq.cursor1 >= len(wq.cs1.items) {
 			return false
 		}
 	}
-	for wq.cs2.Items[wq.cursor2].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs2.Items[wq.cursor2].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs2.Items[wq.cursor2].Entity < wq.cs4.Items[wq.cursor4].Entity ||
-		wq.cs2.Items[wq.cursor2].Entity < wq.cs5.Items[wq.cursor5].Entity {
+	for wq.cs2.items[wq.cursor2].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs2.items[wq.cursor2].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs2.items[wq.cursor2].Entity < wq.cs4.items[wq.cursor4].Entity ||
+		wq.cs2.items[wq.cursor2].Entity < wq.cs5.items[wq.cursor5].Entity {
 		wq.cursor2++
-		if wq.cursor2 >= len(wq.cs2.Items) {
+		if wq.cursor2 >= len(wq.cs2.items) {
 			return false
 		}
 	}
-	for wq.cs3.Items[wq.cursor3].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs3.Items[wq.cursor3].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs3.Items[wq.cursor3].Entity < wq.cs4.Items[wq.cursor4].Entity ||
-		wq.cs3.Items[wq.cursor3].Entity < wq.cs5.Items[wq.cursor5].Entity {
+	for wq.cs3.items[wq.cursor3].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs3.items[wq.cursor3].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs3.items[wq.cursor3].Entity < wq.cs4.items[wq.cursor4].Entity ||
+		wq.cs3.items[wq.cursor3].Entity < wq.cs5.items[wq.cursor5].Entity {
 		wq.cursor3++
-		if wq.cursor3 >= len(wq.cs3.Items) {
+		if wq.cursor3 >= len(wq.cs3.items) {
 			return false
 		}
 	}
-	for wq.cs4.Items[wq.cursor4].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs4.Items[wq.cursor4].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs4.Items[wq.cursor4].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs4.Items[wq.cursor4].Entity < wq.cs5.Items[wq.cursor5].Entity {
+	for wq.cs4.items[wq.cursor4].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs4.items[wq.cursor4].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs4.items[wq.cursor4].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs4.items[wq.cursor4].Entity < wq.cs5.items[wq.cursor5].Entity {
 		wq.cursor4++
-		if wq.cursor4 >= len(wq.cs4.Items) {
+		if wq.cursor4 >= len(wq.cs4.items) {
 			return false
 		}
 	}
-	for wq.cs5.Items[wq.cursor5].Entity < wq.cs1.Items[wq.cursor1].Entity ||
-		wq.cs5.Items[wq.cursor5].Entity < wq.cs2.Items[wq.cursor2].Entity ||
-		wq.cs5.Items[wq.cursor5].Entity < wq.cs3.Items[wq.cursor3].Entity ||
-		wq.cs5.Items[wq.cursor5].Entity < wq.cs4.Items[wq.cursor4].Entity {
+	for wq.cs5.items[wq.cursor5].Entity < wq.cs1.items[wq.cursor1].Entity ||
+		wq.cs5.items[wq.cursor5].Entity < wq.cs2.items[wq.cursor2].Entity ||
+		wq.cs5.items[wq.cursor5].Entity < wq.cs3.items[wq.cursor3].Entity ||
+		wq.cs5.items[wq.cursor5].Entity < wq.cs4.items[wq.cursor4].Entity {
 		wq.cursor5++
-		if wq.cursor5 >= len(wq.cs5.Items) {
+		if wq.cursor5 >= len(wq.cs5.items) {
 			return false
 		}
 	}
-	if wq.cs1.Items[wq.cursor1].IsDeleted || wq.cs2.Items[wq.cursor2].IsDeleted ||
-		wq.cs3.Items[wq.cursor3].IsDeleted || wq.cs4.Items[wq.cursor4].IsDeleted ||
-		wq.cs5.Items[wq.cursor5].IsDeleted {
+	if wq.cs1.items[wq.cursor1].IsDeleted || wq.cs2.items[wq.cursor2].IsDeleted ||
+		wq.cs3.items[wq.cursor3].IsDeleted || wq.cs4.items[wq.cursor4].IsDeleted ||
+		wq.cs5.items[wq.cursor5].IsDeleted {
 		goto beginNextWQ5
 	}
 	return true
@@ -595,11 +595,11 @@ func (wq *worldQuery5[T1, T2, T3, T4, T5]) Clone() Query5[T1, T2, T3, T4, T5] {
 }
 
 func (wq *worldQuery5[T1, T2, T3, T4, T5]) Item() (Entity, *T1, *T2, *T3, *T4, *T5) {
-	ref1 := &wq.cs1.Items[wq.cursor1]
-	ref2 := &wq.cs2.Items[wq.cursor2]
-	ref3 := &wq.cs3.Items[wq.cursor3]
-	ref4 := &wq.cs4.Items[wq.cursor4]
-	ref5 := &wq.cs5.Items[wq.cursor5]
+	ref1 := &wq.cs1.items[wq.cursor1]
+	ref2 := &wq.cs2.items[wq.cursor2]
+	ref3 := &wq.cs3.items[wq.cursor3]
+	ref4 := &wq.cs4.items[wq.cursor4]
+	ref5 := &wq.cs5.items[wq.cursor5]
 	return ref1.Entity, &ref1.Component, &ref2.Component, &ref3.Component, &ref4.Component, &ref5.Component
 }
 
@@ -626,11 +626,11 @@ func getOrCreateQuery5[T1, T2, T3, T4, T5 Component](w World) Query5[T1, T2, T3,
 	// to the world
 	// That is why we call getOrCreateComponentStorage
 
-	cs1 := getOrCreateComponentStorage[T1](w)
-	cs2 := getOrCreateComponentStorage[T2](w)
-	cs3 := getOrCreateComponentStorage[T3](w)
-	cs4 := getOrCreateComponentStorage[T4](w)
-	cs5 := getOrCreateComponentStorage[T5](w)
+	cs1 := getOrCreateComponentStorage[T1](w, 0)
+	cs2 := getOrCreateComponentStorage[T2](w, 0)
+	cs3 := getOrCreateComponentStorage[T3](w, 0)
+	cs4 := getOrCreateComponentStorage[T4](w, 0)
+	cs5 := getOrCreateComponentStorage[T5](w, 0)
 
 	q := &worldQuery5[T1, T2, T3, T4, T5]{
 		w:       w,

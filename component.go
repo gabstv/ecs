@@ -29,8 +29,9 @@ type componentStorage[T Component] struct {
 	zeroValue  T
 	zeroType   reflect.Type
 	mask       U256
-	Items      []componentStore[T]
 	references []*componentWeakReference[T]
+	siblings   []worldComponentStorage
+	items      []componentStore[T]
 }
 
 func (s componentStorage[T]) ComponentType() reflect.Type {
@@ -48,21 +49,27 @@ func (s *componentStorage[T]) Add(e Entity, data T) {
 		di.OnAddedToEntity(e)
 	}
 
-	if len(s.Items) == 0 {
-		s.Items = append(s.Items, componentStore[T]{
+	if len(s.items) == 0 {
+		if cap(s.items) == len(s.items) {
+			// realloc will happen;
+			// the func below will ensure that components that are often used together in the same memory region
+			// have to play nice with the CPU cache
+			s.ensureCapacity(len(s.items)*2, true)
+		}
+		s.items = append(s.items, componentStore[T]{
 			Entity:    e,
 			Component: data,
 		})
 		return
 	}
-	if s.Items[len(s.Items)-1].Entity < e {
-		s.Items = append(s.Items, componentStore[T]{
+	if s.items[len(s.items)-1].Entity < e {
+		s.items = append(s.items, componentStore[T]{
 			Entity:    e,
 			Component: data,
 		})
 		return
 	}
-	if index, ok := slices.BinarySearchFunc(s.Items, e, func(item componentStore[T], e Entity) int {
+	if index, ok := slices.BinarySearchFunc(s.items, e, func(item componentStore[T], e Entity) int {
 		if item.Entity < e {
 			return -1
 		}
@@ -72,11 +79,11 @@ func (s *componentStorage[T]) Add(e Entity, data T) {
 		return 0
 	}); ok {
 		// replace existing componentStore[T] at index
-		s.Items[index].Component = data
-		s.Items[index].IsDeleted = false
+		s.items[index].Component = data
+		s.items[index].IsDeleted = false
 	} else {
 		// add a new componentStore[T] at index
-		s.Items = slices.Insert(s.Items, index, componentStore[T]{
+		s.items = slices.Insert(s.items, index, componentStore[T]{
 			Entity:    e,
 			Component: data,
 			IsDeleted: false,
@@ -92,12 +99,34 @@ func (s *componentStorage[T]) Add(e Entity, data T) {
 	}
 }
 
+func (s *componentStorage[T]) ensureCapacity(capacity int, forceRealloc bool) {
+	if cap(s.items) >= capacity && !forceRealloc {
+		return
+	}
+	//TODO: track the amount of reallocations that occured
+	oldItems := s.items
+	s.items = make([]componentStore[T], len(oldItems), max(capacity, cap(oldItems)*2))
+	copy(s.items, oldItems)
+	oldItems = nil
+	for _, v := range s.siblings {
+		v.reallocSelf(capacity)
+	}
+}
+
+// this will only affect this component (no siblings)
+func (s *componentStorage[T]) reallocSelf(capacity int) {
+	oldItems := s.items
+	s.items = make([]componentStore[T], len(oldItems), max(capacity, cap(oldItems)))
+	copy(s.items, oldItems)
+	oldItems = nil
+}
+
 func (s *componentStorage[T]) entityAt(index int) Entity {
-	return s.Items[index].Entity
+	return s.items[index].Entity
 }
 
 func (s *componentStorage[T]) removeEntity(ctx *Context, e Entity) any {
-	if index, ok := slices.BinarySearchFunc(s.Items, e, func(cs componentStore[T], target Entity) int {
+	if index, ok := slices.BinarySearchFunc(s.items, e, func(cs componentStore[T], target Entity) int {
 		if cs.Entity < target {
 			return -1
 		}
@@ -106,8 +135,8 @@ func (s *componentStorage[T]) removeEntity(ctx *Context, e Entity) any {
 		}
 		return 0
 	}); ok {
-		s.Items[index].IsDeleted = true
-		if di, ok := any(&(&s.Items[index]).Component).(ComponentWithRemovalCallback); ok {
+		s.items[index].IsDeleted = true
+		if di, ok := any(&(&s.items[index]).Component).(ComponentWithRemovalCallback); ok {
 			di.OnRemovedFromEntity(e)
 		}
 		// invalidate weak references!
@@ -125,7 +154,7 @@ func (s *componentStorage[T]) removeEntity(ctx *Context, e Entity) any {
 				s.references[p].lastIndex = -1
 			}
 		}
-		return s.Items[index].Component
+		return s.items[index].Component
 	}
 	return nil
 }
@@ -139,7 +168,7 @@ func (s *componentStorage[T]) fireComponentRemovedEvent(ctx *Context, e Entity, 
 }
 
 func (s *componentStorage[T]) findEntity(e Entity) (index int, data *T) {
-	if index, ok := slices.BinarySearchFunc(s.Items, e, func(cs componentStore[T], target Entity) int {
+	if index, ok := slices.BinarySearchFunc(s.items, e, func(cs componentStore[T], target Entity) int {
 		if cs.Entity < target {
 			return -1
 		}
@@ -148,31 +177,42 @@ func (s *componentStorage[T]) findEntity(e Entity) (index int, data *T) {
 		}
 		return 0
 	}); ok {
-		if s.Items[index].IsDeleted {
+		if s.items[index].IsDeleted {
 			return -1, nil
 		}
-		return index, &(&s.Items[index]).Component
+		return index, &(&s.items[index]).Component
 	}
 	return -1, nil
 }
 
 func (s *componentStorage[T]) gc() {
-	icopy := make([]componentStore[T], 0, cap(s.Items))
-	for _, v := range s.Items {
+	icopy := make([]componentStore[T], 0, cap(s.items))
+	for _, v := range s.items {
 		if !v.IsDeleted {
 			icopy = append(icopy, v)
 		}
 	}
-	s.Items = icopy
+	s.items = icopy
 	for _, wr := range s.references {
 		wr.refresh()
 	}
+}
+
+func (s *componentStorage[T]) appendSibling(wc worldComponentStorage) {
+	for _, v := range s.siblings {
+		if v == wc {
+			return
+		}
+	}
+	s.siblings = append(s.siblings, wc)
 }
 
 type worldComponentStorage interface {
 	ComponentType() reflect.Type
 	ComponentMask() U256
 	entityAt(index int) Entity
+	ensureCapacity(capacity int, forceRealloc bool)
+	reallocSelf(capacity int)
 	removeEntity(ctx *Context, e Entity) any
 	// the only purpose of this function is to be called inside the world.removeEntity() function
 	// This is because the component events are Generic, and the world cannot call generic methods.
@@ -183,7 +223,7 @@ type worldComponentStorage interface {
 
 func removeComponent[T Component](ctx *Context, e Entity) {
 	w := ctx.world
-	cs := getOrCreateComponentStorage[T](w)
+	cs := getOrCreateComponentStorage[T](w, 0)
 	fe := w.getFatEntity(e)
 	if fe.ComponentMap.And(cs.ComponentMask()).IsZero() {
 		return
@@ -200,11 +240,28 @@ func removeComponent[T Component](ctx *Context, e Entity) {
 	})
 }
 
+// EnsureComponentAffinity ensures that the component storage for this component is in the same memory region as the other components.
+// This is useful to play nice with the CPU cache.
+func EnsureComponentAffinity[T1, T2 Component](ctx *Context) {
+	ct1 := getOrCreateComponentStorage[T1](ctx.world, 0)
+	ct2 := getOrCreateComponentStorage[T2](ctx.world, 0)
+	ct1.appendSibling(ct2)
+	ct2.appendSibling(ct1)
+}
+
+// EnsureComponentCapacity must run before any AddComponent call to be effective.
+// Use this when you have an idea of the average number of entities that will have this component.
+// A smart use of this function can reduce the number of allocations.
+func EnsureComponentCapacity[T Component](ctx *Context, capacity int) {
+	ct := getOrCreateComponentStorage[T](ctx.world, capacity)
+	ct.ensureCapacity(capacity, false)
+}
+
 // GetComponent is a moderately expensive operation (in ECS terms) since it
 // performs a binary search on the component storage. It is recommended to
 // use a query instead of this function.
 func GetComponent[T Component](ctx *Context, entity Entity) *T {
-	ct := getOrCreateComponentStorage[T](ctx.world)
+	ct := getOrCreateComponentStorage[T](ctx.world, 0)
 	_, ref := ct.findEntity(entity)
 	return ref
 }
@@ -316,11 +373,11 @@ func (r *componentWeakReferenceChild[T]) Component() *T {
 		// entity was removed
 		return nil
 	}
-	if r.parent.parent.Items[r.parent.lastIndex].Entity != r.parent.entity {
+	if r.parent.parent.items[r.parent.lastIndex].Entity != r.parent.entity {
 		//TODO: get the new index
 		r.parent.lastIndex = -1
 	}
-	return &r.parent.parent.Items[r.parent.lastIndex].Component
+	return &r.parent.parent.items[r.parent.lastIndex].Component
 }
 
 func (r *componentWeakReferenceChild[T]) Destroy() {
@@ -347,6 +404,6 @@ type WeakReference[T Component] interface {
 //
 //	the component storage will keep a pointer to this component reference forever).
 func NewWeakReference[T Component](ctx *Context, entity Entity) WeakReference[T] {
-	ct := getOrCreateComponentStorage[T](ctx.world)
+	ct := getOrCreateComponentStorage[T](ctx.world, 0)
 	return ct.getOrCreateWeakReference(entity)
 }
