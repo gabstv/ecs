@@ -1,9 +1,14 @@
 package ecs
 
 import (
-	"reflect"
 	"sync"
 )
+
+type EventUUID string
+
+type Event interface {
+	EventUUID() EventUUID
+}
 
 // eventStorage may have a one frame delay if the reader system runs before the writer system
 type eventStorage[T any] struct {
@@ -71,25 +76,23 @@ type genericEventStorage interface {
 	step()
 }
 
-func ensureEventExists[T any](ctx *Context) {
+func ensureEventExists[T Event](ctx *Context) {
 	var zt T
 	evmap := ctx.world.getEvents()
-	tm := typeMapKeyOf(reflect.TypeOf(zt))
-	evi := evmap[tm]
+	evi := evmap[zt.EventUUID()]
 	if evi == nil {
-		evmap[tm] = &eventStorage[T]{}
+		evmap[zt.EventUUID()] = &eventStorage[T]{}
 	}
 }
 
 // EventWriter[T]
-func EventWriter[T any](ctx *Context) EventWriterFunc[T] {
+func EventWriter[T Event](ctx *Context) EventWriterFunc[T] {
 	ctx.eventRWLock.Lock()
 	defer ctx.eventRWLock.Unlock()
 	ensureEventExists[T](ctx)
 	var zt T
 	evmap := ctx.world.getEvents()
-	tm := typeMapKeyOf(reflect.TypeOf(zt))
-	ew := evmap[tm].(*eventStorage[T])
+	ew := evmap[zt.EventUUID()].(*eventStorage[T])
 	return func(t T) {
 		ew.add(ctx, t)
 	}
@@ -97,22 +100,21 @@ func EventWriter[T any](ctx *Context) EventWriterFunc[T] {
 
 type EventWriterFunc[T any] func(T)
 
-func EventReader[T any](ctx *Context) EventReaderFunc[T] {
+func EventReader[T Event](ctx *Context) EventReaderFunc[T] {
 	ctx.eventRWLock.Lock()
 	defer ctx.eventRWLock.Unlock()
 	ensureEventExists[T](ctx)
 	var zv T
 	evmap := ctx.world.getEvents()
 
-	tm := typeMapKeyOf(reflect.TypeOf(zv))
-	ch := evmap[tm].(*eventStorage[T])
+	ch := evmap[zv.EventUUID()].(*eventStorage[T])
 	return ch.newReader(ctx)
 }
 
 // EventReaderFunc returns false if there are no more events to read.
 type EventReaderFunc[T any] func() (T, bool)
 
-type EntityComponentPair[T any] struct {
+type EntityComponentPair[T Component] struct {
 	Entity Entity
 	// This is a copy of the component at the time of the event.
 	// If you absolutely need to get a pointer to the component, you can use
@@ -122,16 +124,15 @@ type EntityComponentPair[T any] struct {
 
 func getComponentAddedEventsParent[T Component](w World) *eventStorage[EntityComponentPair[T]] {
 	var zt T
-	zk := typeMapKeyOf(reflect.TypeOf(zt))
 	m := w.getComponentAddedEvents()
-	vi := m[zk]
+	vi := m[zt.ComponentUUID()]
 	if vi == nil {
 		vv := &eventStorage[EntityComponentPair[T]]{
 			e0: make([]eventStorageItem[EntityComponentPair[T]], 0),
 			e1: make([]eventStorageItem[EntityComponentPair[T]], 0),
 		}
 		vi = vv
-		m[zk] = vi
+		m[zt.ComponentUUID()] = vi
 	}
 	v := vi.(*eventStorage[EntityComponentPair[T]])
 	return v
@@ -139,16 +140,15 @@ func getComponentAddedEventsParent[T Component](w World) *eventStorage[EntityCom
 
 func getComponentRemovedEventsParent[T Component](w World) *eventStorage[EntityComponentPair[T]] {
 	var zt T
-	zk := typeMapKeyOf(reflect.TypeOf(zt))
 	m := w.getComponentRemovedEvents()
-	vi := m[zk]
+	vi := m[zt.ComponentUUID()]
 	if vi == nil {
 		vv := &eventStorage[EntityComponentPair[T]]{
 			e0: make([]eventStorageItem[EntityComponentPair[T]], 0),
 			e1: make([]eventStorageItem[EntityComponentPair[T]], 0),
 		}
 		vi = vv
-		m[zk] = vi
+		m[zt.ComponentUUID()] = vi
 	}
 	v := vi.(*eventStorage[EntityComponentPair[T]])
 	return v

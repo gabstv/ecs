@@ -10,11 +10,15 @@ func (c position) ComponentUUID() ComponentUUID {
 	return "test.position"
 }
 
-func TestWeakReference(t *testing.T) {
+type posDB struct {
+	pcopy []WeakReference[position]
+}
 
-	type posDB struct {
-		pcopy []WeakReference[position]
-	}
+func (posDB) ResourceUUID() ResourceUUID {
+	return "test.posDB"
+}
+
+func TestWeakReference(t *testing.T) {
 
 	w := NewWorld()
 

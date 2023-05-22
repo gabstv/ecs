@@ -1,9 +1,5 @@
 package ecs
 
-import (
-	"reflect"
-)
-
 type queryBase interface {
 	Next() bool
 	Reset()
@@ -84,8 +80,7 @@ func (wq *worldQuery1[T1]) Item() (Entity, *T1) {
 // getOrCreateQuery1 also increases the usage by 1
 func getOrCreateQuery1[T1 Component](w World) Query1[T1] {
 	var zt T1
-	rt := reflect.TypeOf(zt)
-	th := typeTapeOf(rt)
+	th := typeTapeOf(zt)
 	iq := w.getQuery(th)
 	if iq != nil {
 		q := iq.(Query1[T1])
@@ -176,10 +171,8 @@ func (wq *worldQuery2[T1, T2]) Item() (Entity, *T1, *T2) {
 // getOrCreateQuery2 also increases the usage by 1
 func getOrCreateQuery2[T1, T2 Component](w World) Query2[T1, T2] {
 	var zt1 T1
-	rt1 := reflect.TypeOf(zt1)
 	var zt2 T2
-	rt2 := reflect.TypeOf(zt2)
-	th := typeTapeOf(rt1, rt2)
+	th := typeTapeOf(zt1, zt2)
 	iq := w.getQuery(th)
 	if iq != nil {
 		q := iq.(Query2[T1, T2])
@@ -305,12 +298,9 @@ func (wq *worldQuery3[T1, T2, T3]) Item() (Entity, *T1, *T2, *T3) {
 // getOrCreateQuery3 also increases the usage by 1
 func getOrCreateQuery3[T1, T2, T3 Component](w World) Query3[T1, T2, T3] {
 	var zt1 T1
-	rt1 := reflect.TypeOf(zt1)
 	var zt2 T2
-	rt2 := reflect.TypeOf(zt2)
 	var zt3 T3
-	rt3 := reflect.TypeOf(zt3)
-	th := typeTapeOf(rt1, rt2, rt3)
+	th := typeTapeOf(zt1, zt2, zt3)
 	iq := w.getQuery(th)
 	if iq != nil {
 		q := iq.(Query3[T1, T2, T3])
@@ -441,14 +431,10 @@ func (wq *worldQuery4[T1, T2, T3, T4]) Item() (Entity, *T1, *T2, *T3, *T4) {
 
 func getOrCreateQuery4[T1, T2, T3, T4 Component](w World) Query4[T1, T2, T3, T4] {
 	var zt1 T1
-	rt1 := reflect.TypeOf(zt1)
 	var zt2 T2
-	rt2 := reflect.TypeOf(zt2)
 	var zt3 T3
-	rt3 := reflect.TypeOf(zt3)
 	var zt4 T4
-	rt4 := reflect.TypeOf(zt4)
-	th := typeTapeOf(rt1, rt2, rt3, rt4)
+	th := typeTapeOf(zt1, zt2, zt3, zt4)
 	iq := w.getQuery(th)
 	if iq != nil {
 		q := iq.(Query4[T1, T2, T3, T4])
@@ -605,16 +591,11 @@ func (wq *worldQuery5[T1, T2, T3, T4, T5]) Item() (Entity, *T1, *T2, *T3, *T4, *
 
 func getOrCreateQuery5[T1, T2, T3, T4, T5 Component](w World) Query5[T1, T2, T3, T4, T5] {
 	var zt1 T1
-	rt1 := reflect.TypeOf(zt1)
 	var zt2 T2
-	rt2 := reflect.TypeOf(zt2)
 	var zt3 T3
-	rt3 := reflect.TypeOf(zt3)
 	var zt4 T4
-	rt4 := reflect.TypeOf(zt4)
 	var zt5 T5
-	rt5 := reflect.TypeOf(zt5)
-	th := typeTapeOf(rt1, rt2, rt3, rt4, rt5)
+	th := typeTapeOf(zt1, zt2, zt3, zt4, zt5)
 	iq := w.getQuery(th)
 	if iq != nil {
 		q := iq.(Query5[T1, T2, T3, T4, T5])

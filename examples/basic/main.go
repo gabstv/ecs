@@ -76,6 +76,10 @@ type GlobalProps struct {
 	TotalPosVelChanged int
 }
 
+func (GlobalProps) ResourceUUID() ecs.ResourceUUID {
+	return "examples/basic/main.GlobalProps"
+}
+
 func moveAll(ctx *ecs.Context) {
 	props := ecs.Resource[GlobalProps](ctx)
 	props.TotalPosVelChanged = 0

@@ -32,11 +32,11 @@ type World interface {
 	newComponentMask() U256
 	newEntity() Entity
 	removeEntity(*Context, Entity)
-	setResource(TypeMapKey, any)
-	getResource(TypeMapKey) any
-	getEvents() map[TypeMapKey]any
-	getComponentAddedEvents() map[TypeMapKey]any
-	getComponentRemovedEvents() map[TypeMapKey]any
+	setResource(ResourceUUID, any)
+	getResource(ResourceUUID) any
+	getEvents() map[EventUUID]any
+	getComponentAddedEvents() map[ComponentUUID]any
+	getComponentRemovedEvents() map[ComponentUUID]any
 	gc()
 }
 
@@ -45,16 +45,16 @@ type worldImpl struct {
 	lastSystemID      uint64
 	lastComponentMask U256
 	entities          []fatEntity
-	events            map[TypeMapKey]any
+	events            map[EventUUID]any
 	components        []worldComponentStorage
 	componentsIndex   map[ComponentUUID]int // TypeHash here represents a single type
-	componentsAdded   map[TypeMapKey]any
-	componentsRemoved map[TypeMapKey]any
+	componentsAdded   map[ComponentUUID]any
+	componentsRemoved map[ComponentUUID]any
 	systems           []worldSystem
 	startupSystemsBuf []System
 	startupSystems    Container[System]
 	queries           map[TypeTape]any
-	resources         map[TypeMapKey]any
+	resources         map[ResourceUUID]any
 
 	lastContext      *Context
 	lastContextMutex sync.Mutex
@@ -62,10 +62,10 @@ type worldImpl struct {
 	entitiesNeedSorting bool
 }
 
-func (w *worldImpl) getComponentAddedEvents() map[TypeMapKey]any {
+func (w *worldImpl) getComponentAddedEvents() map[ComponentUUID]any {
 	return w.componentsAdded
 }
-func (w *worldImpl) getComponentRemovedEvents() map[TypeMapKey]any {
+func (w *worldImpl) getComponentRemovedEvents() map[ComponentUUID]any {
 	return w.componentsRemoved
 }
 
@@ -74,7 +74,7 @@ func (w *worldImpl) ShallowCopy() World {
 		parent:            w,
 		systems:           make([]worldSystem, 0, 32),
 		startupSystemsBuf: make([]System, 0, 16),
-		events:            make(map[TypeMapKey]any),
+		events:            make(map[EventUUID]any),
 	}
 }
 
@@ -123,11 +123,11 @@ func NewWorld() World {
 	return &worldImpl{
 		components:        make([]worldComponentStorage, 0, 256),
 		componentsIndex:   make(map[ComponentUUID]int),
-		componentsAdded:   make(map[TypeMapKey]any),
-		componentsRemoved: make(map[TypeMapKey]any),
-		events:            make(map[TypeMapKey]any),
+		componentsAdded:   make(map[ComponentUUID]any),
+		componentsRemoved: make(map[ComponentUUID]any),
+		events:            make(map[EventUUID]any),
 		queries:           make(map[TypeTape]any),
-		resources:         make(map[TypeMapKey]any),
+		resources:         make(map[ResourceUUID]any),
 		systems:           make([]worldSystem, 0, 1024),
 		startupSystemsBuf: make([]System, 0, 256),
 	}
@@ -216,7 +216,7 @@ func (w *worldImpl) getFatEntity(e Entity) *fatEntity {
 	return nil
 }
 
-func (w *worldImpl) getEvents() map[TypeMapKey]any {
+func (w *worldImpl) getEvents() map[EventUUID]any {
 	return w.events
 }
 
@@ -286,17 +286,16 @@ func (w *worldImpl) gc() {
 	w.entities = ecopy
 }
 
-func (w *worldImpl) getResource(k TypeMapKey) any {
+func (w *worldImpl) getResource(k ResourceUUID) any {
 	if r, ok := w.resources[k]; ok {
 		return r
 	}
 	return nil
 }
 
-func (w *worldImpl) setResource(k TypeMapKey, r any) {
+func (w *worldImpl) setResource(k ResourceUUID, r any) {
 	if _, ok := w.resources[k]; ok {
-		kv := reflect.Value(k)
-		panic(fmt.Sprintf("resource already set %v", kv.Type().String()))
+		panic(fmt.Sprintf("resource already set %v", k))
 	}
 	w.resources[k] = r
 	if dr, ok := r.(WorldIniter); ok {
@@ -343,17 +342,17 @@ func (w *worldImpl) commit() {
 type worldShallowCopy struct {
 	parent *worldImpl
 
-	events            map[TypeMapKey]any
+	events            map[EventUUID]any
 	lastSystemID      uint64
 	systems           []worldSystem
 	startupSystems    Container[System]
 	startupSystemsBuf []System
 }
 
-func (w *worldShallowCopy) getComponentAddedEvents() map[TypeMapKey]any {
+func (w *worldShallowCopy) getComponentAddedEvents() map[ComponentUUID]any {
 	return w.parent.getComponentAddedEvents()
 }
-func (w *worldShallowCopy) getComponentRemovedEvents() map[TypeMapKey]any {
+func (w *worldShallowCopy) getComponentRemovedEvents() map[ComponentUUID]any {
 	return w.parent.getComponentRemovedEvents()
 }
 
@@ -433,7 +432,7 @@ func (w *worldShallowCopy) getComponentStorage(zv Component) worldComponentStora
 	return w.parent.getComponentStorage(zv)
 }
 
-func (w *worldShallowCopy) getEvents() map[TypeMapKey]any {
+func (w *worldShallowCopy) getEvents() map[EventUUID]any {
 	return w.events
 }
 
@@ -453,10 +452,10 @@ func (w *worldShallowCopy) newEntity() Entity {
 func (w *worldShallowCopy) removeEntity(ctx *Context, e Entity) {
 	w.parent.removeEntity(ctx, e)
 }
-func (w *worldShallowCopy) setResource(k TypeMapKey, r any) {
+func (w *worldShallowCopy) setResource(k ResourceUUID, r any) {
 	w.parent.setResource(k, r)
 }
-func (w *worldShallowCopy) getResource(k TypeMapKey) any {
+func (w *worldShallowCopy) getResource(k ResourceUUID) any {
 	return w.parent.getResource(k)
 }
 

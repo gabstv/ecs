@@ -1,7 +1,6 @@
 package ecs
 
 import (
-	"reflect"
 	"sync"
 )
 
@@ -20,21 +19,20 @@ func (c *Context) World() World {
 	return c.world
 }
 
-func LocalResource[T any](c *Context) *T {
+func LocalResource[T ResourceT](c *Context) *T {
 	if c.isStartupSystem {
 		panic("LocalResource is not allowed in startup systems")
 	}
 	var zv T
-	tm := typeMapKeyOf(reflect.TypeOf(zv))
-	x := c.currentSystem.LocalResources[tm]
+	x := c.currentSystem.LocalResources[zv.ResourceUUID()]
 	if x == nil {
 		zvp := &zv
 		if vi, ok := any(zvp).(WorldIniter); ok {
 			vi.Init(c.world)
 		}
-		c.currentSystem.LocalResources[tm] = zvp
+		c.currentSystem.LocalResources[zv.ResourceUUID()] = zvp
 	}
-	return (c.currentSystem.LocalResources[tm].(*T))
+	return (c.currentSystem.LocalResources[zv.ResourceUUID()].(*T))
 }
 
 type EntityCommandCallback func(ctx *Context, e Entity)
