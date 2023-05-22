@@ -131,6 +131,7 @@ func execSpawnCallbacks(parentctx *Context, e Entity, actions ...EntityCommandCa
 	ctxchild := &Context{
 		world:              parentctx.world,
 		commands:           make([]Command, 0),
+		commandsbuf:        make([]Command, 2),
 		currentSystem:      parentctx.currentSystem,
 		isStartupSystem:    parentctx.isStartupSystem,
 		currentSystemIndex: parentctx.currentSystemIndex,
@@ -140,7 +141,6 @@ func execSpawnCallbacks(parentctx *Context, e Entity, actions ...EntityCommandCa
 		action(ctxchild, e)
 	}
 	ctxchild.run()
-	ctxchild.commands = nil
 }
 
 func newSpawnCommand[T Component](w World, data T, actions ...EntityCommandCallback) Command {
