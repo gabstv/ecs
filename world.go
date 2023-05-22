@@ -191,7 +191,6 @@ func (w *worldImpl) getComponentStorage(zv Component) worldComponentStorage {
 	if zv == nil {
 		panic("zv is nil")
 	}
-	fmt.Println("getComponentStorage", zv.ComponentUUID())
 	if i, ok := w.componentsIndex[zv.ComponentUUID()]; ok {
 		// assert(w.components[i].ComponentType() == t, "_BUG_ - component type mismatch")
 		return w.components[i]
