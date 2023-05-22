@@ -25,7 +25,7 @@ type World interface {
 	addSystem(sys worldSystem) (SystemID, error)
 	addStartupSystem(sys System)
 	getContext() *Context
-	getComponentStorage(reflect.Type) worldComponentStorage
+	getComponentStorage(Component) worldComponentStorage
 	getFatEntity(Entity) *fatEntity
 	// getQuery may return nil
 	getQuery(TypeTape) any
@@ -47,7 +47,7 @@ type worldImpl struct {
 	entities          []fatEntity
 	events            map[TypeMapKey]any
 	components        []worldComponentStorage
-	componentsIndex   map[TypeMapKey]int // TypeHash here represents a single type
+	componentsIndex   map[ComponentUUID]int // TypeHash here represents a single type
 	componentsAdded   map[TypeMapKey]any
 	componentsRemoved map[TypeMapKey]any
 	systems           []worldSystem
@@ -122,7 +122,7 @@ func (w *worldImpl) Exec(fn func(*Context)) {
 func NewWorld() World {
 	return &worldImpl{
 		components:        make([]worldComponentStorage, 0, 256),
-		componentsIndex:   make(map[TypeMapKey]int),
+		componentsIndex:   make(map[ComponentUUID]int),
 		componentsAdded:   make(map[TypeMapKey]any),
 		componentsRemoved: make(map[TypeMapKey]any),
 		events:            make(map[TypeMapKey]any),
@@ -139,13 +139,14 @@ func (w *worldImpl) addComponentStorage(cs worldComponentStorage) {
 	assert(w.componentsIndex != nil, "w.componentsIndex is nil")
 	assert(w.components != nil, "w.components is nil")
 
-	th := typeMapKeyOf(cs.ComponentType())
+	iv := reflect.Zero(cs.ComponentType()).Interface()
+	uuid := iv.(Component).ComponentUUID()
 	// make sure that the component type is not already registered
-	_, exists := w.componentsIndex[th]
+	_, exists := w.componentsIndex[uuid]
 	assert(!exists, "_BUG_ - component type already registered")
 	l := len(w.components)
 	w.components = append(w.components, cs)
-	w.componentsIndex[th] = l
+	w.componentsIndex[uuid] = l
 }
 
 func (w *worldImpl) addSystem(sys worldSystem) (SystemID, error) {
@@ -186,10 +187,13 @@ func (w *worldImpl) getContext() *Context {
 	return w.lastContext
 }
 
-func (w *worldImpl) getComponentStorage(t reflect.Type) worldComponentStorage {
-	th := typeMapKeyOf(t)
-	if i, ok := w.componentsIndex[th]; ok {
-		assert(w.components[i].ComponentType() == t, "_BUG_ - component type mismatch")
+func (w *worldImpl) getComponentStorage(zv Component) worldComponentStorage {
+	if zv == nil {
+		panic("zv is nil")
+	}
+	fmt.Println("getComponentStorage", zv.ComponentUUID())
+	if i, ok := w.componentsIndex[zv.ComponentUUID()]; ok {
+		// assert(w.components[i].ComponentType() == t, "_BUG_ - component type mismatch")
 		return w.components[i]
 	}
 	return nil
@@ -310,7 +314,7 @@ func getOrCreateComponentStorage[T Component](w World, capacity int) *componentS
 		capacity = 16
 	}
 	var zt T
-	ct := w.getComponentStorage(reflect.TypeOf(zt))
+	ct := w.getComponentStorage(zt)
 	if ct != nil {
 		return ct.(*componentStorage[T])
 	}
@@ -426,8 +430,8 @@ func (w *worldShallowCopy) getContext() *Context {
 	return w.parent.getContext()
 }
 
-func (w *worldShallowCopy) getComponentStorage(t reflect.Type) worldComponentStorage {
-	return w.parent.getComponentStorage(t)
+func (w *worldShallowCopy) getComponentStorage(zv Component) worldComponentStorage {
+	return w.parent.getComponentStorage(zv)
 }
 
 func (w *worldShallowCopy) getEvents() map[TypeMapKey]any {

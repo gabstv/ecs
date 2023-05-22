@@ -2,10 +2,15 @@ package ecs
 
 import "testing"
 
+type position struct {
+	x, y int
+}
+
+func (c position) ComponentUUID() ComponentUUID {
+	return "test.position"
+}
+
 func TestWeakReference(t *testing.T) {
-	type position struct {
-		x, y int
-	}
 
 	type posDB struct {
 		pcopy []WeakReference[position]

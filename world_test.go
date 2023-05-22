@@ -6,6 +6,22 @@ import (
 	"testing"
 )
 
+type Position struct {
+	X, Y, Z float64
+}
+
+func (c Position) ComponentUUID() ComponentUUID {
+	return "test.Position"
+}
+
+type Velocity struct {
+	X, Y, Z float64
+}
+
+func (c Velocity) ComponentUUID() ComponentUUID {
+	return "test.Velocity"
+}
+
 func BenchmarkReflectionTechniques(b *testing.B) {
 	type basics struct {
 		foo int
@@ -20,12 +36,6 @@ func BenchmarkReflectionTechniques(b *testing.B) {
 
 func Benchmark10kEntitiesSimple(b *testing.B) {
 	b.StopTimer()
-	type Position struct {
-		X, Y, Z float64
-	}
-	type Velocity struct {
-		X, Y, Z float64
-	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c)
@@ -59,12 +69,6 @@ func Benchmark10kEntitiesSimple(b *testing.B) {
 
 func Benchmark10kEntitiesSimple5050(b *testing.B) {
 	b.StopTimer()
-	type Position struct {
-		X, Y, Z float64
-	}
-	type Velocity struct {
-		X, Y, Z float64
-	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c)
@@ -112,12 +116,6 @@ func Benchmark10kEntitiesSimple5050(b *testing.B) {
 
 func Benchmark100kEntitiesSimple(b *testing.B) {
 	b.StopTimer()
-	type Position struct {
-		X, Y, Z float64
-	}
-	type Velocity struct {
-		X, Y, Z float64
-	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c)
@@ -151,12 +149,6 @@ func Benchmark100kEntitiesSimple(b *testing.B) {
 
 func Benchmark1MEntitiesSimple(b *testing.B) {
 	b.StopTimer()
-	type Position struct {
-		X, Y, Z float64
-	}
-	type Velocity struct {
-		X, Y, Z float64
-	}
 	w := NewWorld()
 	AddSystem(w, func(c *Context) {
 		pvquery := Q2[Position, Velocity](c)
@@ -188,13 +180,23 @@ func Benchmark1MEntitiesSimple(b *testing.B) {
 	}
 }
 
+type Person struct {
+	Name string
+}
+
+func (c Person) ComponentUUID() ComponentUUID {
+	return "test.Person"
+}
+
+type Education struct {
+	Degree float64
+}
+
+func (c Education) ComponentUUID() ComponentUUID {
+	return "test.Education"
+}
+
 func TestRemoveEntity(t *testing.T) {
-	type Person struct {
-		Name string
-	}
-	type Education struct {
-		Degree float64
-	}
 	w := NewWorld()
 	AddStartupSystem(w, func(c *Context) {
 		Spawn2(c, Person{Name: "Bob"}, Education{Degree: 3.0})

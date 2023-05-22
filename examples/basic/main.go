@@ -60,8 +60,16 @@ type Position struct {
 	X, Y float64
 }
 
+func (c Position) ComponentUUID() ecs.ComponentUUID {
+	return "examples/basic/main.Position"
+}
+
 type Velocity struct {
 	X, Y float64
+}
+
+func (c Velocity) ComponentUUID() ecs.ComponentUUID {
+	return "examples/basic/main.Velocity"
 }
 
 type GlobalProps struct {

@@ -6,8 +6,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+type ComponentUUID string
+
 type Component interface {
-	any
+	ComponentUUID() ComponentUUID
 }
 
 type ComponentWithCallback interface {

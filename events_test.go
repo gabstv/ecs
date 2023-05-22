@@ -4,11 +4,15 @@ import (
 	"testing"
 )
 
-func TestComponentAddedEvent(t *testing.T) {
+type testEvcomp struct {
+	Name string
+}
 
-	type testEvcomp struct {
-		Name string
-	}
+func (c testEvcomp) ComponentUUID() ComponentUUID {
+	return "test.testEvcomp"
+}
+
+func TestComponentAddedEvent(t *testing.T) {
 
 	w := NewWorld()
 
