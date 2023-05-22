@@ -8,6 +8,7 @@ import (
 type Context struct {
 	world              World
 	commands           []Command
+	commandsbuf        []Command
 	currentSystem      *worldSystem
 	isStartupSystem    bool
 	currentSystemIndex int
@@ -105,8 +106,18 @@ func GC(ctx *Context) {
 }
 
 func (ctx *Context) run() {
-	for _, cmd := range ctx.commands {
+	if cap(ctx.commandsbuf) < cap(ctx.commands) || len(ctx.commandsbuf) < len(ctx.commands) {
+		ctx.commandsbuf = make([]Command, cap(ctx.commands))
+	}
+	ctx.commandsbuf = ctx.commandsbuf[:len(ctx.commands)]
+	copy(ctx.commandsbuf, ctx.commands)
+	ctx.commands = ctx.commands[:0]
+	for _, cmd := range ctx.commandsbuf {
 		cmd(ctx)
+	}
+	if len(ctx.commands) > 0 {
+		// additional commands were added during the execution of the current commands
+		ctx.run()
 	}
 	//TODO: reorganize entities (if needed) after all commands are executed
 }

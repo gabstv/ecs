@@ -96,7 +96,6 @@ func (w *worldImpl) Step() {
 	for _, v := range w.startupSystemsBuf {
 		v(ctx)
 		ctx.run()
-		w.clearCommands()
 		ctx.currentSystemIndex++
 	}
 	ctx.currentSystemIndex = 0
@@ -106,7 +105,6 @@ func (w *worldImpl) Step() {
 		ctx.currentSystem = &w.systems[i]
 		v.Value(ctx)
 		ctx.run()
-		w.clearCommands()
 		ctx.currentSystemIndex++
 	}
 	ctx.currentSystem = nil
@@ -119,7 +117,6 @@ func (w *worldImpl) Exec(fn func(*Context)) {
 	commands.isStartupSystem = true
 	fn(commands)
 	commands.run()
-	w.clearCommands()
 }
 
 func NewWorld() World {
@@ -329,13 +326,6 @@ func getOrCreateComponentStorage[T Component](w World, capacity int) *componentS
 	return tct
 }
 
-func (w *worldImpl) clearCommands() {
-	if w.lastContext == nil {
-		return
-	}
-	w.lastContext.commands = w.lastContext.commands[:0]
-}
-
 func (w *worldImpl) commit() {
 	if w.entitiesNeedSorting {
 		sort.Slice(w.entities, func(i, j int) bool {
@@ -370,7 +360,6 @@ func (w *worldShallowCopy) Exec(fn func(*Context)) {
 	commands.isStartupSystem = true
 	fn(commands)
 	commands.run()
-	w.parent.clearCommands()
 }
 
 func (w *worldShallowCopy) ShallowCopy() World {
@@ -395,13 +384,11 @@ func (w *worldShallowCopy) Step() {
 	for _, v := range w.startupSystemsBuf {
 		v(commands)
 		commands.run()
-		w.parent.clearCommands()
 	}
 	w.startupSystemsBuf = w.startupSystemsBuf[:0]
 	for _, v := range w.systems {
 		v.Value(commands)
 		commands.run()
-		w.parent.clearCommands()
 	}
 	w.parent.commit()
 }
